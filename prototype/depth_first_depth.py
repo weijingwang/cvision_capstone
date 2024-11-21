@@ -1,13 +1,6 @@
 from PIL import Image
 import numpy as np
 import json
-import sys
-import os
-
-
-# Add the directory containing `get_yolo_json.py` to the Python path
-sys.path.append("/home/jordanprescott/shiv_capstone")
-
 from get_yolo_json import get_json
 
 
@@ -36,11 +29,49 @@ def get_bboxes(yolo_output_json, im_shape):
         label = detection["label"]
         x_min, y_min, x_max, y_max = map(int, detection['bbox'])
         relative_angle = ((x_max - x_min)/2 + x_min) / im_shape[1]  # Relative position in image width
+        relative_angle = 2 * relative_angle - 1
         bboxes.append((label, (x_min, y_min, x_max, y_max), relative_angle))
     return bboxes
 
 
-def get_oda(im_path: str, dm_path: str):
+
+def filter_results(objects, distances, positions, distance_threshold, angle_threshold):
+    """
+    Filters the objects, distances, positions, and importance based on given thresholds.
+
+    Parameters:
+    - objects: List of detected object labels.
+    - distances: List of distances corresponding to each object.
+    - positions: List of relative angles (positions) corresponding to each object.
+    - importance: List of importance values corresponding to each object.
+    - distance_threshold: Maximum allowed distance for filtering.
+    - angle_threshold: Maximum allowed angle deviation for filtering.
+    - importance_threshold: Minimum importance value for filtering.
+
+    Returns:
+    - Filtered objects, distances, positions, and importance as lists.
+    """
+    
+    obj_list = ["car", "person", "tree"]
+    
+    filtered_objects = []
+    filtered_distances = []
+    filtered_positions = []
+
+    for obj, dist, angle in zip(objects, distances, positions):
+        # if dist <= distance_threshold and abs(angle) <= angle_threshold and obj in obj_list:
+        if dist <= distance_threshold and abs(angle) <= angle_threshold:
+            filtered_objects.append(obj)
+            filtered_distances.append(dist)
+            filtered_positions.append(angle)
+
+    return filtered_objects, filtered_distances, filtered_positions
+
+
+
+
+
+def get_oda(im_path: str, dm_path: str, distance_threshold: float, normalized_angle_threshold: float):
     # Load the image as grayscale
     image = Image.open(im_path).convert("L")
 
@@ -75,20 +106,8 @@ def get_oda(im_path: str, dm_path: str):
     # Prepare data for text-to-speech function
     objects = [obj for obj, _, _ in results]
     distances = [distance for _, distance, _ in results]
-    positions = [angle for _, _, angle in results]
-    importance = [5] * len(objects)  # Assign a default importance value (e.g., 5)
+    angles = [angle for _, _, angle in results]
+    
+    filtered_objects, filtered_distances, filtered_positions = filter_results(objects, distances, angles, distance_threshold, normalized_angle_threshold)
 
-    return objects, distances, positions, importance
-
-
-# Example Usage
-image_path = "./misc/smaller_cars.png"
-depth_map_path = "./misc/resized_out.npz"
-
-objects, distances, positions, importance = get_oda(image_path, depth_map_path)
-
-# Print the results to confirm
-print("Objects:", objects)
-print("Distances:", distances)
-print("Positions:", positions)
-print("Importance:", importance)
+    return filtered_objects, filtered_distances, filtered_positions
