@@ -10,32 +10,41 @@ detected_objects = [
     {
         "object": "car",
         "distance": 4.083666801452637,
-        "angle": 0.5107421875
+        "angle": 0.5107421875,
+        "importance": 7
     },
     {
         "object": "person",
         "distance": 4.950667381286621,
-        "angle": 0.0654296875
+        "angle": 0.0654296875,
+        "importance": 9
     },
     {
         "object": "car",
         "distance": 9.901939392089844,
-        "angle": 0.7001953125
+        "angle": 0.7001953125,
+        "importance": 5
     }
 ]
 
 # Initialize pyttsx3 for TTS
 tts_engine = pyttsx3.init()
 
-# Function to set voice based on object type
-def set_voice_for_object(obj):
+# Function to set voice and pitch based on object type and importance
+def set_voice_and_pitch_for_object(obj, importance):
     voices = tts_engine.getProperty('voices')
+
+    # Assign different voices based on the object
     if obj.lower() == "car":
-        tts_engine.setProperty('voice', voices[0].id)  # Use the first voice
+        tts_engine.setProperty('voice', voices[0].id)  # First voice
     elif obj.lower() == "person":
-        tts_engine.setProperty('voice', voices[1].id)  # Use the second voice
+        tts_engine.setProperty('voice', voices[1].id)  # Second voice
     else:
         tts_engine.setProperty('voice', voices[0].id)  # Default voice
+
+    # Adjust pitch dynamically based on importance
+    pitch_adjustment = 150 + (importance * 10)  # Example: Base pitch 150, scaled by importance
+    tts_engine.setProperty('rate', pitch_adjustment)  # Adjust the rate (acts as pitch proxy)
 
 # Function to generate spatially aware audio
 def text_to_speech_proximity_spatial(objects, distances, positions, importance):
@@ -46,8 +55,8 @@ def text_to_speech_proximity_spatial(objects, distances, positions, importance):
             base_volume = max(-30, -1 * dist)  # Distance-based volume adjustment
             adjusted_volume = base_volume + (imp / 10)  # Importance-based adjustment
 
-            # Set voice for the object
-            set_voice_for_object(obj)
+            # Set voice and pitch for the object
+            set_voice_and_pitch_for_object(obj, imp)
 
             # Generate speech using pyttsx3 and save it to a temporary file
             tts_path = os.path.join(temp_dir, f"{obj}.wav")
@@ -63,13 +72,16 @@ def text_to_speech_proximity_spatial(objects, distances, positions, importance):
             elif pos > 0.7:
                 panned_audio = speech_audio.pan(1)   # Right
             else:
-                panned_audio = speech_audio.pan(0)   # Center
+                panned_audio = speech_audio  # Default to no panning (center)
 
             # Apply volume adjustments
             louder_audio = panned_audio + adjusted_volume
             smoother_audio = louder_audio.fade_in(50).fade_out(50)  # Smooth transitions
 
             combined_audio += smoother_audio
+
+            # Play individual audio for the object
+            play(louder_audio)
 
     # Export combined audio
     combined_audio.export("output.mp3", format="mp3")
@@ -82,7 +94,7 @@ def process_json_and_generate_audio(data):
     objects = [item['object'] for item in data]
     distances = [item['distance'] for item in data]
     positions = [item['angle'] for item in data]  # 'angle' is equivalent to position
-    importance = [10] * len(data)  # Default importance for now (can be dynamic)
+    importance = [item['importance'] for item in data]
 
     # Call the audio generation function
     text_to_speech_proximity_spatial(objects, distances, positions, importance)
