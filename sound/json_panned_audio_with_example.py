@@ -1,5 +1,5 @@
 import json
-from gtts import gTTS
+import pyttsx3
 from pydub import AudioSegment
 from pydub.playback import play
 import tempfile
@@ -24,6 +24,19 @@ detected_objects = [
     }
 ]
 
+# Initialize pyttsx3 for TTS
+tts_engine = pyttsx3.init()
+
+# Function to set voice based on object type
+def set_voice_for_object(obj):
+    voices = tts_engine.getProperty('voices')
+    if obj.lower() == "car":
+        tts_engine.setProperty('voice', voices[0].id)  # Use the first voice
+    elif obj.lower() == "person":
+        tts_engine.setProperty('voice', voices[1].id)  # Use the second voice
+    else:
+        tts_engine.setProperty('voice', voices[0].id)  # Default voice
+
 # Function to generate spatially aware audio
 def text_to_speech_proximity_spatial(objects, distances, positions, importance):
     combined_audio = AudioSegment.silent(duration=0)  # Start with an empty AudioSegment
@@ -33,10 +46,13 @@ def text_to_speech_proximity_spatial(objects, distances, positions, importance):
             base_volume = max(-30, -1 * dist)  # Distance-based volume adjustment
             adjusted_volume = base_volume + (imp / 10)  # Importance-based adjustment
 
-            # Generate speech using gTTS
-            tts = gTTS(text=obj, lang="en")
-            tts_path = os.path.join(temp_dir, f"{obj}.mp3")
-            tts.save(tts_path)
+            # Set voice for the object
+            set_voice_for_object(obj)
+
+            # Generate speech using pyttsx3 and save it to a temporary file
+            tts_path = os.path.join(temp_dir, f"{obj}.wav")
+            tts_engine.save_to_file(obj, tts_path)
+            tts_engine.runAndWait()
 
             # Load generated speech
             speech_audio = AudioSegment.from_file(tts_path)
