@@ -190,7 +190,7 @@ def generate_and_play_audio_with_piper(piper_path, model_path, temp_dir, tasks):
             #time.sleep(1) #for delay between each sound file
 
 
-# Uncomment if you want to paste wav files in a temp dir
+# Uncomment if you want to paste wav files in a dir
 #test_dir = '/home/wrschiff/PycharmProjects/capstone/test_dir' 
 def main(input_file, base_dir, piper_path, model_path):
     # Process JSON to extract necessary information
@@ -201,7 +201,7 @@ def main(input_file, base_dir, piper_path, model_path):
         {"text": obj, "closest_file": file, "is_flipped": flipped, "distance": dist}
         for obj, file, dist, flipped in zip(objects, closest_files, distances, is_flipped)
     ]
-    # Uncomment if you want wav files in a temp dir
+    # Uncomment if you want wav files in a dir
     #generate_and_play_audio_with_piper(piper_path, model_path, test_dir, tasks)
     
     # Temporary directory for Piper outputs
