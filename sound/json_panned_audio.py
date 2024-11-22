@@ -1,11 +1,30 @@
 import json
-from gtts import gTTS
+import pyttsx3
 from pydub import AudioSegment
 from pydub.playback import play
 import tempfile
 import os
 
-# Audio generation function
+# Initialize pyttsx3 for TTS
+tts_engine = pyttsx3.init()
+
+# Function to set voice and pitch based on object type and importance
+def set_voice_and_pitch_for_object(obj, importance):
+    voices = tts_engine.getProperty('voices')
+
+    # Assign different voices based on the object
+    if obj.lower() == "car":
+        tts_engine.setProperty('voice', voices[0].id)  # First voice
+    elif obj.lower() == "person":
+        tts_engine.setProperty('voice', voices[1].id)  # Second voice
+    else:
+        tts_engine.setProperty('voice', voices[0].id)  # Default voice
+
+    # Adjust pitch dynamically based on importance
+    pitch_adjustment = 150 + (importance * 10)  # Example: Base pitch 150, scaled by importance
+    tts_engine.setProperty('rate', pitch_adjustment)  # Adjust the rate (acts as pitch proxy)
+
+# Function to generate spatially aware audio
 def text_to_speech_proximity_spatial(objects, distances, positions, importance):
     combined_audio = AudioSegment.silent(duration=0)  # Start with an empty AudioSegment
 
@@ -14,10 +33,13 @@ def text_to_speech_proximity_spatial(objects, distances, positions, importance):
             base_volume = max(-30, -1 * dist)  # Distance-based volume adjustment
             adjusted_volume = base_volume + (imp / 10)  # Importance-based adjustment
 
-            # Generate speech using gTTS
-            tts = gTTS(text=obj, lang="en")
-            tts_path = os.path.join(temp_dir, f"{obj}.mp3")
-            tts.save(tts_path)
+            # Set voice and pitch for the object
+            set_voice_and_pitch_for_object(obj, imp)
+
+            # Generate speech using pyttsx3 and save it to a temporary file
+            tts_path = os.path.join(temp_dir, f"{obj}.wav")
+            tts_engine.save_to_file(obj, tts_path)
+            tts_engine.runAndWait()
 
             # Load generated speech
             speech_audio = AudioSegment.from_file(tts_path)
@@ -28,7 +50,7 @@ def text_to_speech_proximity_spatial(objects, distances, positions, importance):
             elif pos > 0.7:
                 panned_audio = speech_audio.pan(1)   # Right
             else:
-                panned_audio = speech_audio.pan(0)   # Center
+                panned_audio = speech_audio  # Default to no panning (center)
 
             # Apply volume adjustments
             louder_audio = panned_audio + adjusted_volume
@@ -36,27 +58,26 @@ def text_to_speech_proximity_spatial(objects, distances, positions, importance):
 
             combined_audio += smoother_audio
 
+            # Play individual audio for the object
+            play(louder_audio)
+
     # Export combined audio
     combined_audio.export("output.mp3", format="mp3")
     print("Generated MP3 file: output.mp3")
     play(combined_audio)
 
-# Pipeline to process input JSON and call the audio function
-def process_input_and_generate_audio(json_file):
-    # Read the JSON data
-    with open(json_file, 'r') as f:
-        data = json.load(f)
-
-    # Extract fields from the JSON
+# Main function to process JSON data and generate audio
+def process_json_and_generate_audio(data):
+    # Extract fields from the JSON data
     objects = [item['object'] for item in data]
     distances = [item['distance'] for item in data]
     positions = [item['angle'] for item in data]  # 'angle' is equivalent to position
-    importance = [10] * len(data)  # Default importance for now (can be dynamic)
+    importance = [item['importance'] for item in data]
 
     # Call the audio generation function
     text_to_speech_proximity_spatial(objects, distances, positions, importance)
 
-# Example usage
+# Run the process
 if __name__ == "__main__":
-    # Assuming the JSON file is named 'detected_objects.json'
-    process_input_and_generate_audio("detected_objects.json")
+    # Use the sample JSON data above
+    process_json_and_generate_audio(detected_objects)
