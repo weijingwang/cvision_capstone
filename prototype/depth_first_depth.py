@@ -2,7 +2,22 @@ from PIL import Image
 import numpy as np
 import json
 from get_yolo_json import get_json
+import ml_depth_pro.src.depth_pro as depth_pro
 
+
+
+def get_depth_map(name):
+    model, transform = depth_pro.create_model_and_transforms()
+    model.eval()
+
+    image, _, f_px, = depth_pro.load_rgb(f'/home/vikramiyer/ml-depth-pro/images/{name}.jpg')
+    image = transform(image)
+
+    prediction = model.infer(image, f_px=f_px)
+    depth = prediction["depth"]  # Depth in [m].
+    focallength_px = prediction["focallength_px"]  # Focal length in pixels.
+
+    return depth, focallength_px
 
 
 def get_map_of_specific_depth(depth_map, specific_depth):
@@ -70,18 +85,16 @@ def filter_results(objects, distances, positions, distance_threshold, angle_thre
 
 
 
-
-def get_oda(im_path: str, dm_path: str, distance_threshold: float, normalized_angle_threshold: float):
-    # Load the image as grayscale
-    image = Image.open(im_path).convert("L")
-
-    # Load depth map
-    data = np.load(dm_path)
-    depth = data[data.files[0]]
+def get_oda(im_path: str, distance_threshold: float, normalized_angle_threshold: float):
+        
+    # Get depth map
+    depth, _ = get_depth_map(im_path)
 
     # Get YOLO detections
     yolo_output_json = get_json(im_path)
-
+    
+    # Load the image as grayscale
+    image = Image.open(im_path).convert("L")
     # Convert YOLO output to bounding boxes
     bounding_boxes = get_bboxes(yolo_output_json, np.array(image).shape)
     

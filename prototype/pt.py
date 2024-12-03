@@ -7,6 +7,7 @@ sys.path.append(project_root)
 os.chdir("/home/jordanprescott/shiv_capstone/prototype")
 
 # Import functions after adding the path
+from get_depth_map import get_dm
 from depth_first_depth import get_oda
 from new_audio import text_to_speech_proximity_spatial
 
@@ -16,11 +17,11 @@ depth_map_path = "./misc/resized_out.npz"
 
 # thresholds
 distance_threshold = 5 # 5m
-angle_threshold = 180 #
+angle_threshold = 180 # angle from center that is desired
 normalized_angle_threshold = angle_threshold / 180
 
 # Get objects, distances, angles, and importance
-objects, distances, angles = get_oda(image_path, depth_map_path, distance_threshold, normalized_angle_threshold)
+objects, distances, angles = get_oda(image_path, distance_threshold, normalized_angle_threshold)
 
 # Pass the output to the text-to-speech function
 text_to_speech_proximity_spatial(objects, distances, angles)
