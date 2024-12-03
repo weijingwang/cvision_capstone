@@ -1,0 +1,20 @@
+[
+    {
+        "object": "automobile",
+        "distance": 4.083666801452637,
+        "x_angle": 0.510,
+        "y_angle": 0.0
+    },
+    {
+        "object": "person",
+        "distance": 4.950667381286621,
+        "x_angle": 0.0654296875,
+        "y_angle": 0.8
+    },
+    {
+        "object": "cat",
+        "distance": 9.901939392089844,
+        "x_angle": 0.7001953125,
+        "y_angle": -0.4
+    }
+]
