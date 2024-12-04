@@ -2,27 +2,25 @@ from PIL import Image
 import numpy as np
 import json
 from get_yolo_json import get_json
+import torch
 import ml_depth_pro.src.depth_pro as depth_pro
 
 
+def get_depth_map(image_path, model, transform):
+    """
+    Retrieves the depth map and focal length using the preloaded model and transform.
+    """
+    print("Starting depth map retrieval...")
 
-def get_depth_map(image_path):
-
-    print("starting depth map retrieval")
-
-    model, transform = depth_pro.create_model_and_transforms()
-    model.eval()
-
-    image, _, f_px, = depth_pro.load_rgb(image_path)
+    image, _, f_px = depth_pro.load_rgb(image_path)
     image = transform(image)
 
     prediction = model.infer(image, f_px=f_px)
-    depth = prediction["depth"]  # Depth in [m].
-    focallength_px = prediction["focallength_px"]  # Focal length in pixels.
-    depth_array = np.array(depth)
+    depth = prediction["depth"]  # Depth in [m]
+    focallength_px = prediction["focallength_px"]  # Focal length in pixels
+    depth_array = depth.cpu().numpy()
 
-    print("success")
-
+    print("Depth map retrieval successful.")
     return depth_array, focallength_px
 
 
@@ -49,38 +47,21 @@ def get_bboxes(yolo_output_json, im_shape):
     for detection in yolo_output_json:
         label = detection["label"]
         x_min, y_min, x_max, y_max = map(int, detection['bbox'])
-        relative_angle = ((x_max - x_min)/2 + x_min) / im_shape[1]  # Relative position in image width
+        relative_angle = ((x_max - x_min) / 2 + x_min) / im_shape[1]  # Relative position in image width
         relative_angle = 2 * relative_angle - 1
         bboxes.append((label, (x_min, y_min, x_max, y_max), relative_angle))
     return bboxes
 
 
-
 def filter_results(objects, distances, positions, distance_threshold, angle_threshold):
     """
-    Filters the objects, distances, positions, and importance based on given thresholds.
-
-    Parameters:
-    - objects: List of detected object labels.
-    - distances: List of distances corresponding to each object.
-    - positions: List of relative angles (positions) corresponding to each object.
-    - importance: List of importance values corresponding to each object.
-    - distance_threshold: Maximum allowed distance for filtering.
-    - angle_threshold: Maximum allowed angle deviation for filtering.
-    - importance_threshold: Minimum importance value for filtering.
-
-    Returns:
-    - Filtered objects, distances, positions, and importance as lists.
+    Filters the objects, distances, and positions based on thresholds.
     """
-    
-    obj_list = ["car", "person", "tree"]
-    
     filtered_objects = []
     filtered_distances = []
     filtered_positions = []
 
     for obj, dist, angle in zip(objects, distances, positions):
-        # if dist <= distance_threshold and abs(angle) <= angle_threshold and obj in obj_list:
         if dist <= distance_threshold and abs(angle) <= angle_threshold:
             filtered_objects.append(obj)
             filtered_distances.append(dist)
@@ -89,13 +70,13 @@ def filter_results(objects, distances, positions, distance_threshold, angle_thre
     return filtered_objects, filtered_distances, filtered_positions
 
 
-
-
-def get_oda(im_path: str, distance_threshold: float, normalized_angle_threshold: float):
-
+def get_oda(im_path: str, distance_threshold: float, normalized_angle_threshold: float, model, transform):
+    """
+    Main function to get objects, distances, and angles based on depth and YOLO detections.
+    """
     # Get depth map
     print("Getting depth map...")
-    depth, _ = get_depth_map(im_path)
+    depth, _ = get_depth_map(im_path, model, transform)
 
     # Get YOLO detections
     print("Getting YOLO detections...")
@@ -103,12 +84,10 @@ def get_oda(im_path: str, distance_threshold: float, normalized_angle_threshold:
 
     # Load the image as grayscale
     image = Image.open(im_path).convert("L")
-    # Convert YOLO output to bounding boxes
     bounding_boxes = get_bboxes(yolo_output_json, np.array(image).shape)
 
     print(f"Number of detected objects: {len(bounding_boxes)}")
 
-    # List of specific depth thresholds
     specific_depths = [1, 5, 10, 100]
     results = []
 
@@ -124,7 +103,6 @@ def get_oda(im_path: str, distance_threshold: float, normalized_angle_threshold:
                 
     print(f"Remaining unprocessed objects: {len(bounding_boxes)}")
 
-    # Prepare data for text-to-speech function
     objects = [obj for obj, _, _ in results]
     distances = [distance for _, distance, _ in results]
     angles = [angle for _, _, angle in results]

@@ -44,7 +44,7 @@ def plot_yolo_results(image_path, detections):
 
 def get_json(image_path):
     # Load a pretrained YOLOv5 model
-    model = YOLO('./misc/yolov5s.pt')  # Specify the correct model file path
+    model = YOLO('./misc/yolov5su.pt')  # Specify the correct model file path
 
     # Perform inference on the image
     results = model(image_path)  # This returns a list of Results objects for each image

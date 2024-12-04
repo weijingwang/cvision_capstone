@@ -1,6 +1,6 @@
 from gtts import gTTS
 from pydub import AudioSegment
-from pydub.playback import play
+from playsound import playsound
 import tempfile
 import os
 
@@ -23,20 +23,24 @@ def text_to_speech_proximity_spatial(objects, distances, angles):
 
             # Generate speech using gTTS
             tts = gTTS(text=obj, lang="en")
-            tts_path = os.path.join(temp_dir, f"{obj}.mp3")
+            tts_path = os.path.join(temp_dir, f"{obj}.wav")
             tts.save(tts_path)
 
             # Load generated speech
             speech_audio = AudioSegment.from_file(tts_path)
 
+            # Apply spatial panning and volume adjustments
             panned_audio = speech_audio.pan(angle)
-
-            # Apply volume adjustments
             louder_audio = panned_audio + adjusted_volume
             smoother_audio = louder_audio.fade_in(50).fade_out(50)  # Smooth transitions
 
             combined_audio += smoother_audio
 
-    print("Generated MP3 file: output.mp3")
-    play(combined_audio)
+        # Save the combined audio to a temporary file
+        output_path = os.path.join(temp_dir, "output.wav")
+        combined_audio.export(output_path, format="wav")
+        print(f"Generated WAV file: {output_path}")
+
+        # Play the audio using playsound
+        playsound(output_path)
 
