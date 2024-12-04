@@ -5,6 +5,55 @@ from get_yolo_json import get_json
 import torch
 import ml_depth_pro.src.depth_pro as depth_pro
 
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import matplotlib.patches as patches
+
+
+
+
+def plot_filtered_depth_map_with_bboxes(filtered_depth_map, filtered_objects, filtered_positions, filtered_distances, bboxes):
+    """
+    Plots the filtered depth map with bounding boxes overlaid for filtered objects.
+    """
+    plt.figure(figsize=(12, 12))
+    plt.imshow(filtered_depth_map, cmap='inferno')
+    plt.colorbar(label="Depth (m)")
+
+    # Add bounding boxes and labels
+    for obj, dist, angle, (label, bbox) in zip(filtered_objects, filtered_distances, filtered_positions, bboxes):
+        x_min, y_min, x_max, y_max = bbox
+        rect = patches.Rectangle(
+            (x_min, y_min), x_max - x_min, y_max - y_min,
+            linewidth=2, edgecolor='cyan', facecolor='none'
+        )
+        plt.gca().add_patch(rect)
+
+        # Annotate the bounding box with the object label and distance
+        label_text = f"{obj}\nDist: {dist:.2f}m\nAngle: {angle:.2f}"
+        plt.text(x_min, y_min - 10, label_text, color='cyan', fontsize=10, bbox=dict(facecolor='black', alpha=0.5))
+
+    plt.title("Filtered Depth Map with Bounding Boxes")
+    plt.axis('off')
+    plt.show()
+
+
+
+def plot_depth_map(depth_map, threshold=None):
+    """
+    Plots the depth map using matplotlib with inverted colormap.
+    """
+    inverted_cmap = cm.get_cmap('inferno').reversed()
+
+    filtered_depth_map = depth_map.copy()
+    filtered_depth_map[depth_map >= threshold] = 0
+
+    plt.figure(figsize=(10, 10))
+    plt.imshow(filtered_depth_map, cmap='inferno')
+    plt.colorbar()
+    plt.title("Filtered Depth Map")
+    plt.show()
+
 
 def get_depth_map(image_path, model, transform):
     """
@@ -21,6 +70,7 @@ def get_depth_map(image_path, model, transform):
     depth_array = depth.cpu().numpy()
 
     print("Depth map retrieval successful.")
+
     return depth_array, focallength_px
 
 
@@ -74,20 +124,35 @@ def get_oda(im_path: str, distance_threshold: float, normalized_angle_threshold:
     """
     Main function to get objects, distances, and angles based on depth and YOLO detections.
     """
-    # Get depth map
-    print("Getting depth map...")
-    depth, _ = get_depth_map(im_path, model, transform)
+    # Display the image as a figure
+    plt.imshow(plt.imread(im_path))
+    plt.axis('off')
+    plt.show()
+
 
     # Get YOLO detections
     print("Getting YOLO detections...")
     yolo_output_json = get_json(im_path)
 
-    # Load the image as grayscale
-    image = Image.open(im_path).convert("L")
+    # Get bounding boxes
+    image = Image.open(im_path).convert("RGB")
     bounding_boxes = get_bboxes(yolo_output_json, np.array(image).shape)
 
     print(f"Number of detected objects: {len(bounding_boxes)}")
 
+
+    # Get depth map
+    print("Getting depth map...")
+    depth, _ = get_depth_map(im_path, model, transform)
+
+    # Create a filtered depth map based on the distance threshold
+    filtered_depth_map = depth.copy()
+    filtered_depth_map[depth >= distance_threshold] = 0
+
+    # Plot the filtered depth map
+    plot_depth_map(filtered_depth_map, distance_threshold)
+
+    
     specific_depths = [1, 5, 10, 100]
     results = []
 
@@ -97,16 +162,20 @@ def get_oda(im_path: str, distance_threshold: float, normalized_angle_threshold:
             sdm = get_map_of_specific_depth(depth, sd)
             avg_depth = average_depth_over_bbox(sdm, bbox)
             if not np.isnan(avg_depth):
-                results.append((label, avg_depth, angle))
+                results.append((label, avg_depth, angle, (label, bbox)))
                 bounding_boxes.remove((label, bbox, angle))
                 print(f"Object: {label}, Distance: {avg_depth:.2f}, Angle: {angle}")
-                
+            
     print(f"Remaining unprocessed objects: {len(bounding_boxes)}")
 
-    objects = [obj for obj, _, _ in results]
-    distances = [distance for _, distance, _ in results]
-    angles = [angle for _, _, angle in results]
-    
+    objects = [obj for obj, _, _, _ in results]
+    distances = [distance for _, distance, _, _ in results]
+    angles = [angle for _, _, angle, _ in results]
+    result_bboxes = [bbox for _, _, _, bbox in results]
+
     filtered_objects, filtered_distances, filtered_positions = filter_results(objects, distances, angles, distance_threshold, normalized_angle_threshold)
+
+    # Plot the filtered depth map with filtered bounding boxes
+    plot_filtered_depth_map_with_bboxes(filtered_depth_map, filtered_objects, filtered_positions, filtered_distances, result_bboxes)
 
     return filtered_objects, filtered_distances, filtered_positions

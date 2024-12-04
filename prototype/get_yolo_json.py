@@ -74,7 +74,7 @@ def get_json(image_path):
         })
     
     # Plot the results
-    # plot_yolo_results(image_path, detections)
+    plot_yolo_results(image_path, detections)
 
     # Return the detections as JSON
     return json.dumps(detections)

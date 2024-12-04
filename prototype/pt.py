@@ -2,10 +2,11 @@ import os
 from ml_depth_pro.src.depth_pro import depth_pro
 from depth_first_depth import get_oda
 from new_audio import text_to_speech_proximity_spatial
+from PIL import Image
 
 # Constants
 MISC_DIR = "./misc"  # Directory containing the images
-DISTANCE_THRESHOLD = 5  # 5 meters
+DISTANCE_THRESHOLD = 10  # 10 meters
 ANGLE_THRESHOLD = 180  # Angle from the center that is desired
 NORMALIZED_ANGLE_THRESHOLD = ANGLE_THRESHOLD / 180
 
@@ -28,6 +29,7 @@ def process_image(image_name):
         return
     
     print(f"Processing image: {image_path}")
+
     # Get objects, distances, and angles
     objects, distances, angles = get_oda(
         image_path,
