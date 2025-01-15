@@ -1,15 +1,90 @@
 from PIL import Image
 import numpy as np
 import json
-from get_yolo_json import get_json
 import torch
 import ml_depth_pro.src.depth_pro as depth_pro
-
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.patches as patches
+from ultralytics import YOLO
 
 
+
+def plot_yolo_results(image_path, detections):
+    # Load the image
+    image = Image.open(image_path)
+
+    # Create a matplotlib figure and axis
+    fig, ax = plt.subplots(1, figsize=(10, 10))
+
+    # Display the image
+    ax.imshow(image)
+
+    # Iterate over the detections and draw bounding boxes
+    for detection in detections:
+        label = detection["label"]
+        bbox = detection["bbox"]
+        confidence = detection["confidence"]
+        
+        # Create a Rectangle patch
+        rect = patches.Rectangle(
+            (bbox[0], bbox[1]), bbox[2] - bbox[0], bbox[3] - bbox[1],
+            linewidth=2, edgecolor='r', facecolor='none'
+        )
+        
+        # Add the patch to the axes
+        ax.add_patch(rect)
+        
+        # Add a label and confidence text
+        ax.text(
+            bbox[0], bbox[1] - 10, f'{label}: {confidence:.2f}',
+            fontsize=12, color='red', weight='bold'
+        )
+
+    # Set title and axis off
+    ax.set_title('YOLO Detection Results')
+    ax.axis('off')
+
+    # Show the plot
+    plt.show()
+
+
+def get_yolo_json(image_path):
+    # Load a pretrained YOLOv5 model
+    model = YOLO('./misc/yolov5su.pt')  # Specify the correct model file path
+
+    # Perform inference on the image
+    results = model(image_path)  # This returns a list of Results objects for each image
+
+    # Extract the detected objects and their bounding boxes
+    detections = []
+
+    # Get the results for the first image (index 0)
+    result = results[0]  # Access the first result (you can loop through if multiple images)
+
+    # Extract bounding boxes (boxes) and labels (names)
+    boxes = result.boxes.xyxy  # Bounding boxes in xyxy format (xmin, ymin, xmax, ymax)
+    labels = result.names  # Mapping of class IDs to class names
+    confidences = result.boxes.conf  # Confidence scores for each detection
+
+    # Iterate through the boxes and create a list of detections
+    for i, box in enumerate(boxes):
+        label = labels[int(result.boxes.cls[i])]  # Get the class label for the current detection
+        confidence = confidences[i]  # Get the confidence score for the current detection
+        xmin, ymin, xmax, ymax = box  # Extract the bounding box coordinates
+
+        # Create a dictionary with label and bounding box for each detected object
+        detections.append({
+            "label": label,
+            "confidence": float(confidence),  # Convert confidence to float for JSON compatibility
+            "bbox": [int(xmin), int(ymin), int(xmax), int(ymax)]
+        })
+    
+    # Plot the results
+    plot_yolo_results(image_path, detections)
+
+    # Return the detections as JSON
+    return json.dumps(detections)
 
 
 def plot_filtered_depth_map_with_bboxes(filtered_depth_map, filtered_objects, filtered_positions, filtered_distances, bboxes):
@@ -36,7 +111,6 @@ def plot_filtered_depth_map_with_bboxes(filtered_depth_map, filtered_objects, fi
     plt.title("Filtered Depth Map with Bounding Boxes")
     plt.axis('off')
     plt.show()
-
 
 
 def plot_depth_map(depth_map, threshold=None):
@@ -129,17 +203,15 @@ def get_oda(im_path: str, distance_threshold: float, normalized_angle_threshold:
     plt.axis('off')
     plt.show()
 
-
     # Get YOLO detections
     print("Getting YOLO detections...")
-    yolo_output_json = get_json(im_path)
+    yolo_output_json = get_yolo_json(im_path)
 
     # Get bounding boxes
     image = Image.open(im_path).convert("RGB")
     bounding_boxes = get_bboxes(yolo_output_json, np.array(image).shape)
 
     print(f"Number of detected objects: {len(bounding_boxes)}")
-
 
     # Get depth map
     print("Getting depth map...")
@@ -152,16 +224,20 @@ def get_oda(im_path: str, distance_threshold: float, normalized_angle_threshold:
     # Plot the filtered depth map
     plot_depth_map(filtered_depth_map, distance_threshold)
 
-    
+    # Specific depth for which we will see if there are any objects
     specific_depths = [1, 5, 10, 100]
     results = []
 
+    # for each specifc depth we want to check
     for sd in specific_depths:
         print(f"Depth threshold: {sd}")
+        # for each object that we detected in the normal image
         for label, bbox, angle in bounding_boxes[:]:
-            sdm = get_map_of_specific_depth(depth, sd)
-            avg_depth = average_depth_over_bbox(sdm, bbox)
+            sdm = get_map_of_specific_depth(depth, sd) # specific depth map
+            avg_depth = average_depth_over_bbox(sdm, bbox) # average depth over the box
             if not np.isnan(avg_depth):
+                # if there is any depth of the object within the box
+                # remove the object so it is not detected twice
                 results.append((label, avg_depth, angle, (label, bbox)))
                 bounding_boxes.remove((label, bbox, angle))
                 print(f"Object: {label}, Distance: {avg_depth:.2f}, Angle: {angle}")
@@ -173,6 +249,7 @@ def get_oda(im_path: str, distance_threshold: float, normalized_angle_threshold:
     angles = [angle for _, _, angle, _ in results]
     result_bboxes = [bbox for _, _, _, bbox in results]
 
+    # use constant filter parameters passed from pt.py
     filtered_objects, filtered_distances, filtered_positions = filter_results(objects, distances, angles, distance_threshold, normalized_angle_threshold)
 
     # Plot the filtered depth map with filtered bounding boxes
