@@ -104,18 +104,20 @@ if __name__ == '__main__':
                 # Infer depth map from the raw_frame
                 # Get the depth value at the specified location (100, 100)
                 x, y = x_center, y_center  # Coordinates of the pixel
+                
                 if 0 <= y < raw_depth.shape[0] and 0 <= x < raw_depth.shape[1]:  # Check bounds
                     depth_person = raw_depth[y, x]  # Access depth at (row=y, col=x)
                     # print(f"Depth value at ({x}, {y}): {depth_person}")
                 else:
                     print(f"Coordinates ({x}, {y}) are out of bounds for the depth map with shape {raw_depth.shape}.")
 
-                # if depth_person <= 0.1:
-                #     volume = 1
-                # elif depth_person >= 1:
-                #     volume = 0
-                # else:
-                #     volume = 1 - (depth_person - 0.1) / (1 - 0.1)
+                if depth_person >= 4:
+                    volume = 1.0
+                elif depth_person <= 3:
+                    volume = 0.0
+                else:
+                    # Linear interpolation between 3 and 4
+                    volume = (depth_person - 3) / (4 - 3)
 
                 # Draw a red circle at the center of the bounding box
                 cv2.circle(raw_frame, (x_center, y_center), radius=50, color=(0, 0, 255), thickness=-1)
@@ -135,6 +137,8 @@ if __name__ == '__main__':
             # Rendering the text on top
             cv2.putText(depth, f'Pan: {panning:.2f}', (10, 300), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (255, 0, 255), 3, cv2.LINE_AA)
             cv2.putText(depth, f'Vol: {volume:.2f}', (10, 500), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (0, 255, 0), 3, cv2.LINE_AA)
+            cv2.putText(depth, f'DepthPerson: {depth_person:.2f}', (10, 700), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (0, 0, 255), 3, cv2.LINE_AA)
+
             if sound is None:
                 sound = pygame.sndarray.make_sound(wave)
             else:
