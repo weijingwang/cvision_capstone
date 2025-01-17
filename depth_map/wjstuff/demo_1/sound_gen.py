@@ -1,4 +1,5 @@
 """Generate sounds"""
+
 import numpy as np
 
 def generate_sine_wave(frequency, sample_rate, volume, panning, duration=0.1):

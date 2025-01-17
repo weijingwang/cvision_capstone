@@ -1,3 +1,17 @@
+"""
+WJ DEMO1
+
+Enter 0 for main state.
+
+Enter 1 to enter the voice activation state
+    ->then press enter to list all objects
+    ->or enter a specific object to "navigate to it" (just a print for now)
+    /!\automatically returns to main state 0 after action in state 1 voice.
+
+
+1/17/25 Demo Prototype ok. Depthmap and volume not working. Need to replace with depthpro maybe -wj
+"""
+
 import cv2
 import matplotlib
 import pygame
@@ -7,15 +21,15 @@ from depth_map import *
 from sound_gen import *
 from input_handler import *
 from my_constants import *
-
+import globals
 # Initialize global variables for frequency, volume, and panning
 frequency = 440.0  # Default frequency in Hz (A4)
 volume = 0.5       # Default volume (0.0 to 1.0)
 panning = 0.5      # Default panning (0.0 = left, 1.0 = right)
 sound = None
-state = 0 # default in main
 person_detected = False
 red_circle_position = 0 
+
 
 # Initialize Pygame mixer
 pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=2)
@@ -66,7 +80,7 @@ if __name__ == '__main__':
 
         # Run YOLOv8 inference on the frame
         results = model(raw_frame, verbose=False)
-        objects = []
+        
 
 
         # Depth math and get depth map to render
@@ -89,6 +103,7 @@ if __name__ == '__main__':
 
 
         # YOLO what do with each object detected
+        objects = []
         for detection in results[0].boxes.data:
             # YOLO save data for object
             confidence = float(detection[4])  # Confidence score
@@ -125,6 +140,7 @@ if __name__ == '__main__':
                 # Track the horizontal position of the red circle (panning position)
                 red_circle_position = x_center / raw_frame.shape[1]  # Normalize to [0, 1]
         
+        globals.objects_buffer = objects
 
         # Update sound
         volume = max(0.0, min(volume, 1.0))  # Limit volume range

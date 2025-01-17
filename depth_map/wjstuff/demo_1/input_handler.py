@@ -11,73 +11,38 @@ MY STATES input guide
 
 """
 
-global state
-global voice_command
+import globals
 
 
 def input_listener():  # Function to listen for specific key inputs
     """Thread to listen for key inputs and print specific outputs."""
-    state = 0
-    voice_command = ''
+    # state = 0
+    # voice_command = ''
+    # objects_buffer = []
     print("Press '0 for main' or '1 for voice': ")
     while True:
         try:
             user_input = input("").strip().lower()
-            if state == 0:
+            if globals.state == 0:
                 if user_input == '0':
-                    state = 0
+                    globals.state = 0
                     print("main")
                 elif user_input == '1':
-                    state = 1
+                    globals.state = 1
                     print("voice")
                 else:
                     print("Invalid key. Press '0' or '1'.")
 
-            elif state == 1:
+            elif globals.state == 1:
                 if user_input == '':
                     print('listing all the objects...')
+                    print(globals.objects_buffer)
                     
                 else:
-                    voice_command = user_input
-                    print(f'guiding you to {voice_command} and then it finished')
-                state = 0 #move someplace else later
+                    globals.voice_command = user_input
+                    print(f'guiding you to {globals.voice_command} and then it finished')
+                globals.state = 0 #move someplace else later
 
-                
-        
         except Exception as e:
             print(f"Error: {e}")
-
-
-
-
-
-# def input_listener():  # Function to listen for specific key inputs
-#     """Thread to listen for key inputs and print specific outputs."""
-#     print("Press '0 for main' or '1 for voice': ")
-#     while True:
-#         try:
-#             user_input = input("").strip().lower()
-#             if state == 0:
-#                 if user_input == '0':
-#                     state = 0
-#                     print("main")
-#                 elif user_input == '1':
-#                     state = 1
-#                     print("voice")
-#                 else:
-#                     print("Invalid key. Press '0' or '1'.")
-
-#             elif state == 1:
-#                 if user_input == '':
-#                     print('listing all the objects...')
-                    
-#                 else:
-#                     voice_command = user_input
-#                     print(f'guiding you to {voice_command} and then it finished')
-#                 state = 0 #move someplace else later
-
-                
-        
-#         except Exception as e:
-#             print(f"Error: {e}")
 

@@ -1,3 +1,8 @@
+"""
+Depth Anything Initialization
+1/17/25 PROBABLY NOT METRIC!!! need to use their metric model (but not video...)
+"""
+
 import argparse
 import torch
 from depth_anything_v2.dpt import DepthAnythingV2
