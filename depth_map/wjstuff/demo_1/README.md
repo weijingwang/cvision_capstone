@@ -2,6 +2,7 @@
 # First demo install tutorial
 
 ![Project Diagram](demo.jpg)
+
 State chart of design
 
 Current demo has volume problem because the DepthAnything2 used here is not metric.
