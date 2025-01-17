@@ -61,4 +61,5 @@ https://github.com/khw11044/Depth-Anything-V2-streaming
 And marmik_ch19 for temporary command line fix for pytorch error on mac
 https://www.reddit.com/r/pytorch/comments/1c3kwwg/how_do_i_fix_the_mps_notimplemented_error_for_m1/
 
-
+Warning sound by foosiemac from
+https://freesound.org/people/foosiemac/sounds/110395/

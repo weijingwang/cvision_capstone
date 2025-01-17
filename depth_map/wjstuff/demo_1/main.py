@@ -11,7 +11,7 @@ Enter 1 to enter the voice activation state
 
 1/17/25 Demo Prototype ok. Depthmap and volume not working. Need to replace with depthpro maybe -wj
 """
-
+import time
 import cv2
 import matplotlib
 import pygame
@@ -24,7 +24,7 @@ from my_constants import *
 import globals
 # Initialize global variables for frequency, volume, and panning
 frequency = 440.0  # Default frequency in Hz (A4)
-volume = 0.5       # Default volume (0.0 to 1.0)
+volume = MAX_SINE_VOLUME       # Default volume (0.0 to 1.0)
 panning = 0.5      # Default panning (0.0 = left, 1.0 = right)
 sound = None
 person_detected = False
@@ -33,6 +33,35 @@ red_circle_position = 0
 
 # Initialize Pygame mixer
 pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=2)
+pygame.init()
+
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("Your phone - FPS: 0")
+done = False
+# Square properties
+square_size = 200
+square_x = (SCREEN_WIDTH - square_size) // 2
+square_y = (SCREEN_HEIGHT - square_size) // 2
+square_rect = pygame.Rect(square_x, square_y, square_size, square_size)
+button_is_pressed = False
+font = pygame.font.Font(None, 72)  # Default font with size 36
+text_surface = font.render("PRESS", True, BLACK).convert_alpha()  # Render text
+text_rect = text_surface.get_rect(center=square_rect.center)  # Center text on square
+clock = pygame.time.Clock()
+last_click_time = 0
+double_click_threshold = 0.3  # 300 ms for a double click
+is_double_clicked = False
+is_held = False  # Tracks if the button is being held
+warning_sound = pygame.mixer.Sound('warning.ogg')
+warning_sound.set_volume(1)  # Set volume to 10%
+warning_channel = pygame.mixer.Channel(3)  # Use channel 0 for playing this sound
+
+
+def quit_app():
+    pygame.quit()
+    cap.release()
+    cv2.destroyAllWindows()
+    quit()
 
 if __name__ == '__main__':
     # Initialize depth map 
@@ -69,8 +98,45 @@ if __name__ == '__main__':
 
     #Program "Grand loop"
     while cap.isOpened():
-        person_detected = False
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                quit_app()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if square_rect.collidepoint(event.pos):
+                    current_time = time.time()
+                    if current_time - last_click_time <= double_click_threshold:
+                        # print("double pressed")
+                        is_double_clicked = True
+                    # else:
+                    #     # print("pressed")
+                    last_click_time = current_time
+                    button_is_pressed = True
+                    is_held = True
+            elif event.type == pygame.MOUSEBUTTONUP:
+                if square_rect.collidepoint(event.pos):
+                    button_is_pressed = False
+                    is_held = False
 
+        if is_double_clicked:
+            print("LISTEN FOR VOICE INSTRUCTIONS")
+            is_double_clicked = False
+
+        if button_is_pressed:
+            print(f"{objects}")
+        color = DARK_GREEN if button_is_pressed else GREEN
+        screen.fill(WHITE)  # Clear screen
+        pygame.draw.rect(screen, color, square_rect)  # Draw green square
+        screen.blit(text_surface, text_rect)  # Draw text on the screen
+        pygame.display.flip()
+        # Limit FPS to 60
+        clock.tick(PYGAME_FPS)  # Returns the time passed since the last frame in milliseconds
+        pygame_fps = int(clock.get_fps())  # Get the current frames per second
+        # Update window title with FPS
+        pygame.display.set_caption(f"Your phone - FPS: {pygame_fps}")
+
+
+        person_detected = False
+        apple_detected = False
         # Webcam variables
         ret, raw_frame = cap.read()
         if not ret:
@@ -112,6 +178,9 @@ if __name__ == '__main__':
             objects.append((model.names[class_id], confidence))
 
             # LOGIC
+            if model.names[class_id] == "apple":
+                apple_detected = True
+
             if model.names[class_id] == "person":
                 person_detected = True
                 x_center = int((x_min + x_max) / 2)
@@ -127,12 +196,12 @@ if __name__ == '__main__':
                     print(f"Coordinates ({x}, {y}) are out of bounds for the depth map with shape {raw_depth.shape}.")
 
                 if depth_person >= 4:
-                    volume = 1.0
+                    volume = MAX_SINE_VOLUME
                 elif depth_person <= 3:
                     volume = 0.0
                 else:
                     # Linear interpolation between 3 and 4
-                    volume = (depth_person - 3) / (4 - 3)
+                    volume = MAX_SINE_VOLUME * ((depth_person - 3) / (4 - 3))
 
                 # Draw a red circle at the center of the bounding box
                 cv2.circle(raw_frame, (x_center, y_center), radius=50, color=(0, 0, 255), thickness=-1)
@@ -143,7 +212,7 @@ if __name__ == '__main__':
         globals.objects_buffer = objects
 
         # Update sound
-        volume = max(0.0, min(volume, 1.0))  # Limit volume range
+        volume = max(0.0, min(volume, MAX_SINE_VOLUME))  # Limit volume range
         panning = max(0.0, min(red_circle_position, 1.0))  # Limit panning range
         wave = generate_sine_wave(frequency, SAMPLE_RATE, volume, panning, DURATION)
 
@@ -162,6 +231,12 @@ if __name__ == '__main__':
                 sound = pygame.sndarray.make_sound(wave)
             sound.play(loops=0)
 
+        if apple_detected:
+            if not warning_channel.get_busy():  # Check if the channel is not currently playing a sound
+                warning_channel.play(warning_sound)
+        else:
+            if warning_channel.get_busy():  # Check if the channel is not currently playing a sound
+                warning_channel.fadeout(500)
 
         raw_frame = results[0].plot()
 
@@ -174,9 +249,11 @@ if __name__ == '__main__':
             
         # Break on 'q' key press
         if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+            quit_app()
+            # break
     
-    cap.release()
-    cv2.destroyAllWindows()
+    quit_app()
+
+
 
 
