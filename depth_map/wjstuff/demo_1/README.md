@@ -1,5 +1,20 @@
+
 # First demo install tutorial
 
+![Project Diagram](demo.jpg)
+State chart of design
+
+Current demo has volume problem because the DepthAnything2 used here is not metric.
+
+- plays sine wave with panning based on detected person's x-location
+- realtime webcam ~2FPS on my mac
+- show non-metric depth map 
+- and yolo boxes
+
+
+## Setup
+
+First get the checkpoint
 ```bash
 cd checkpoints
 
@@ -8,9 +23,10 @@ cd checkpoints
 cd ..
 ```
 
-## Usage
 
-### Virtual Environment
+## Virtual Environment
+
+Then setup virutal environment
 
 ```bash 
 conda create -n wjdemo python=3.11 -y
@@ -18,25 +34,26 @@ conda create -n wjdemo python=3.11 -y
 conda activate wjdemo
 
 pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-
 ```
-
 
 and pip some other stuff...
 
 
-### run
+## run
+
 ```
 python main.py
-
 ```
 
-### Problem
+
+## Problem
+
 If on M1 mac and have any problems running, do:
 ```export PYTORCH_ENABLE_MPS_FALLBACK=1```
 
 
 ## Credits 
+
 Thanks to khw11044 for tutorial on depth anything webcam
 https://github.com/khw11044/Depth-Anything-V2-streaming
 
