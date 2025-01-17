@@ -24,6 +24,7 @@ def generate_sine_wave(frequency, volume, panning, duration=0.1):
 def input_listener(): # like an interrupt for key detection
     """Thread to listen for user input and update parameters."""
     global frequency, volume, panning
+    global objects
     while True:
         try:
             user_input = input("Enter 'f <freq>' for frequency, 'v <vol>' for volume, 'p <pan>' for panning: ")
@@ -38,6 +39,8 @@ def input_listener(): # like an interrupt for key detection
             elif cmd == 'p':
                 panning = max(0.0, min(value, 1.0))  # Limit panning range
                 print(f"Panning set to {panning} (0.0 = left, 1.0 = right)")
+            elif cmd == 'list':
+                print(objects)
             else:
                 print("Invalid command. Use 'f', 'v', or 'p'.")
         except Exception as e:

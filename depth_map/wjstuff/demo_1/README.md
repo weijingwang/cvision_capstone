@@ -10,12 +10,12 @@ cd ..
 
 ## Usage
 
-### 가상환경 준비 
+### Virtual Environment
 
 ```bash 
-conda create -n dam2 python=3.11 -y
+conda create -n wjdemo python=3.11 -y
 
-conda activate dam2
+conda activate wjdemo
 
 pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 
@@ -27,9 +27,14 @@ and pip some other stuff...
 
 ### run
 ```
-python sound4.py
+python main.py
 
 ```
+
+### Problem
+If on M1 mac and have any problems running, do:
+```export PYTORCH_ENABLE_MPS_FALLBACK=1```
+
 
 ## Credits 
 Thanks to khw11044 for tutorial on depth anything webcam
