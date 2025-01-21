@@ -1,0 +1,84 @@
+import numpy as np
+import json
+
+# Load GloVe embeddings into a dictionary
+embeddings_dict = {}
+glove_file_path = "C:\\Users\\Yubo Liu\\Downloads\\glove.6B\\glove.6B.100d.txt"  # Update this path
+with open(glove_file_path, 'r', encoding="utf-8") as f:
+    for line in f:
+        values = line.split()
+        word = values[0]
+        vector = np.array(values[1:], dtype='float32')
+        embeddings_dict[word] = vector
+
+# Predefined categories with words
+categories = {
+    "Vehicles": ["car", "bike", "bus", "train", "plane", "ship"],
+    "Animals": ["dog", "cat", "fish", "tiger", "bird"]
+}
+
+# Compute semantic similarity
+def compute_similarity(word1, word2):
+    if word1 in embeddings_dict and word2 in embeddings_dict:
+        vec1 = embeddings_dict[word1]
+        vec2 = embeddings_dict[word2]
+        return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+    return 0.0
+
+# Word classification
+def classify_word(word, similarity_threshold=0.5):
+    for category, words in categories.items():
+        if word in words:
+            return category
+        for predefined_word in words:
+            similarity = compute_similarity(word, predefined_word)
+            if similarity >= similarity_threshold:
+                return category
+    return "Uncategorized"
+
+# Label objects as "urgent" or not
+def label_objects(input_objects):
+    labeled_objects = []
+    for obj in input_objects:
+        object_name = obj["object"]
+        category = classify_word(object_name)
+        is_urgent = category == "Vehicles"  # Label objects in "Vehicles" as urgent
+        labeled_objects.append({
+            "object": object_name,
+            "distance": obj["distance"],
+            "angle": obj["angle"],
+            "urgent": is_urgent
+        })
+    return labeled_objects
+
+# Rank urgent objects by distance (consider speed later)
+def rank_urgent_objects(labeled_objects):
+    # Filter only urgent objects
+    urgent_objects = [obj for obj in labeled_objects if obj["urgent"]]
+
+    # Sort urgent objects by distance (closer objects come first)
+    urgent_objects.sort(key=lambda obj: obj["distance"])
+
+    # Remove the "urgent" field from each object
+    processed_objects = [
+        {key: value for key, value in obj.items() if key != "urgent"}
+        for obj in urgent_objects
+    ]
+
+    return processed_objects
+
+# Test input data
+input_objects = [
+    {"object": "bus", "distance": 4.08, "angle": 0.51},
+    {"object": "scooter", "distance": 2.95, "angle": 0.06},
+    {"object": "car", "distance": 3.10, "angle": 0.70},
+    {"object": "cat", "distance": 9.90, "angle": 0.30}
+]
+
+labeled_objects = label_objects(input_objects)
+
+ranked_urgent_objects = rank_urgent_objects(labeled_objects)
+
+# Print the ranked urgent objects
+print("Ranked Urgent Objects:")
+print(json.dumps(ranked_urgent_objects, indent=4))
