@@ -1,0 +1,53 @@
+import numpy as np
+
+# Predefined categories with associated words
+categories = {
+    "Vehicles": ["car", "bike", "ship"],
+    "People": ["man", "woman", "child", "pedestrian"],
+    "Animals": ["dog", "cat", "fish"]
+}
+
+# Load GloVe embeddings into a dictionary
+embeddings_dict = {}
+glove_file_path = "C:\\Users\\Yubo Liu\\Downloads\\glove.6B\\glove.6B.100d.txt" #change to path to glove file
+with open(glove_file_path, 'r', encoding="utf-8") as f:
+    for line in f:
+        values = line.split()
+        word = values[0]
+        vector = np.array(values[1:], dtype='float32')
+        embeddings_dict[word] = vector
+
+# Compute semantic similarity
+def compute_similarity(word1, word2):
+    if word1 in embeddings_dict and word2 in embeddings_dict:
+        vec1 = embeddings_dict[word1]
+        vec2 = embeddings_dict[word2]
+        return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+    return 0.0
+
+# Classify word into a category
+def classify_word(word, similarity_threshold=0.5):
+    for category, words in categories.items():
+        if word in words:
+            return category
+        # Compute similarity if the word is not in the predefined list
+        for predefined_word in words:
+            similarity = compute_similarity(word, predefined_word)
+            if similarity >= similarity_threshold:
+                return category
+    return "Uncategorized"
+
+# Function to classify and prioritize urgent objects
+def prioritize_urgent_objects(detected_objects):
+    urgent_objects = []
+    non_urgent_objects = []
+
+    for obj in detected_objects:
+        category = classify_word(obj)
+        if category == "Vehicles":  # Mark vehicles as urgent
+            urgent_objects.append(obj)
+        else:
+            non_urgent_objects.append(obj)
+
+    # Combine urgent objects first, followed by non-urgent ones
+    return urgent_objects + non_urgent_objects
