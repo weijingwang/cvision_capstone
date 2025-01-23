@@ -1,0 +1,129 @@
+import numpy as np
+import json
+import os
+import glob
+import re
+import subprocess
+import tempfile
+from scipy import signal
+import soundfile as sf
+
+# Predefined categories with associated words
+categories = {
+    "Vehicles": ["car", "bike", "bus", "train", "ship"],
+    "People": ["person", "pedestrian"],
+    "Animals": ["dog", "cat"]
+}
+
+# Load GloVe embeddings into a dictionary
+def load_glove_embeddings(glove_file_path):
+    embeddings_dict = {}
+    with open(glove_file_path, 'r', encoding="utf-8") as f:
+        for line in f:
+            values = line.split()
+            word = values[0]
+            vector = np.array(values[1:], dtype='float32')
+            embeddings_dict[word] = vector
+    return embeddings_dict
+
+# Compute semantic similarity
+def compute_similarity(word1, word2, embeddings_dict):
+    if word1 in embeddings_dict and word2 in embeddings_dict:
+        vec1 = embeddings_dict[word1]
+        vec2 = embeddings_dict[word2]
+        return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+    return 0.0
+
+# Classify word into a category
+def classify_word(word, embeddings_dict, similarity_threshold=0.5):
+    for category, words in categories.items():
+        if word in words:
+            return category
+        # Compute similarity if the word is not in the predefined list
+        for predefined_word in words:
+            similarity = compute_similarity(word, predefined_word, embeddings_dict)
+            if similarity >= similarity_threshold:
+                return category
+    return "Uncategorized"
+
+# Label objects as "urgent" or not
+def label_objects_with_urgency(objects, embeddings_dict):
+    labeled_objects = []
+    for obj in objects:
+        category = classify_word(obj, embeddings_dict)
+        is_urgent = category == "Vehicles"  # Mark vehicles as urgent
+        labeled_objects.append({
+            "object": obj,
+            "urgent": is_urgent
+        })
+    return labeled_objects
+
+# Prioritize urgent objects
+def prioritize_objects(labeled_objects):
+    urgent_objects = [obj for obj in labeled_objects if obj["urgent"]]
+    non_urgent_objects = [obj for obj in labeled_objects if not obj["urgent"]]
+    return urgent_objects + non_urgent_objects
+
+# Modify process_json to include urgency labeling
+def process_json_with_urgency(input_file, base_dir, embeddings_dict):
+    with open(input_file, 'r') as file:
+        data = json.load(file)
+    objects = [item.get("object") for item in data]
+    distances = [item.get("distance") for item in data]
+    closest_files = []
+    is_flipped = []
+
+    for item in data:
+        input_elevation = item.get("y_angle") * 90
+        input_angle = item.get("x_angle")
+        if input_angle <= 0.5:
+            flip = False
+            adjusted_angle = 90 - (input_angle * 180)
+        else:
+            flip = True
+            adjusted_angle = ((input_angle - 0.5) * 180)
+        closest_files.append(get_closest_hrtf_file(input_elevation, adjusted_angle, base_dir))
+        is_flipped.append(flip)
+
+    # Label objects with urgency
+    labeled_objects = label_objects_with_urgency(objects, embeddings_dict)
+
+    # Prioritize objects
+    prioritized_objects = prioritize_objects(labeled_objects)
+
+    return prioritized_objects, distances, closest_files, is_flipped
+
+# Generate and play audio (no changes here)
+def generate_and_play_audio_with_piper(piper_path, model_path, temp_dir, tasks):
+    command = [piper_path, "--model", model_path, "--output_dir", str(temp_dir)]
+    with subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True) as proc:
+        for task in tasks:
+            text_to_speak = task["text"]
+            closest_file = task["closest_file"]
+            is_flipped = task["is_flipped"]
+            distance = task["distance"]
+
+            print(text_to_speak, file=proc.stdin, flush=True)
+            wav_file = proc.stdout.readline().strip()
+            modified_wav = apply_hrtf(wav_file, closest_file, is_flipped, distance)
+            subprocess.run(["aplay", "-D", "default", modified_wav], check=True)
+            os.unlink(wav_file)
+
+# Main function
+def main(input_file, base_dir, piper_path, model_path, glove_file_path):
+    embeddings_dict = load_glove_embeddings(glove_file_path)
+    objects, distances, closest_files, is_flipped = process_json_with_urgency(input_file, base_dir, embeddings_dict)
+    tasks = [{"text": obj["object"], "closest_file": file, "is_flipped": flipped, "distance": dist}
+             for obj, file, dist, flipped in zip(objects, closest_files, distances, is_flipped)]
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        generate_and_play_audio_with_piper(piper_path, model_path, temp_dir, tasks)
+
+# Parameters
+_INPUT_FILE = 'your/path/testobjects.JSON'
+_HRTF_DIR = 'your/path/HRTF/MIT/diffuse'
+_PIPER_PATH = 'your/path/piper/piper'
+_MODEL_PATH = 'your/path/piper/en-us-ryan-high.onnx'
+_GLOVE_FILE_PATH = "C:\\Users\\Yubo Liu\\Downloads\\glove.6B\\glove.6B.100d.txt"
+
+main(_INPUT_FILE, _HRTF_DIR, _PIPER_PATH, _MODEL_PATH, _GLOVE_FILE_PATH)
