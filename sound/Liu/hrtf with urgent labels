@@ -124,6 +124,6 @@ _INPUT_FILE = 'your/path/testobjects.JSON'
 _HRTF_DIR = 'your/path/HRTF/MIT/diffuse'
 _PIPER_PATH = 'your/path/piper/piper'
 _MODEL_PATH = 'your/path/piper/en-us-ryan-high.onnx'
-_GLOVE_FILE_PATH = "C:\\Users\\Yubo Liu\\Downloads\\glove.6B\\glove.6B.100d.txt"
+_GLOVE_FILE_PATH = 'your/path/GloVe.6B.100d'
 
 main(_INPUT_FILE, _HRTF_DIR, _PIPER_PATH, _MODEL_PATH, _GLOVE_FILE_PATH)
