@@ -3,7 +3,8 @@
         "object": "automobile",
         "distance": 4.083666801452637,
         "x_angle": 0.510,
-        "y_angle": 0.0
+        "y_angle": 0.0,
+        "target": true
     },
     {
         "object": "person",
