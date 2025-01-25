@@ -16,8 +16,8 @@ import cv2
 import matplotlib
 import pygame
 import threading
-from ultralytics import YOLO
 from depth_map import *
+from object_det import *
 from sound_gen import *
 from input_handler import *
 from my_constants import *
@@ -72,7 +72,7 @@ if __name__ == '__main__':
 
 
     # Initialize YOLOv8
-    model = YOLO("yolov8n.pt")  # Use the appropriate YOLOv8 model variant (n, s, m, l, x)
+    model = init_objectDet()  # Use the appropriate YOLOv8 model variant (n, s, m, l, x)
     print("Loaded YOLO...")
 
     # Start the input listener thread
@@ -82,7 +82,7 @@ if __name__ == '__main__':
 
 
     # Initialize webcam
-    cmap = matplotlib.colormaps.get_cmap('Spectral_r')
+    cmap = matplotlib.colormaps.get_cmap('gray')
     cap = cv2.VideoCapture(0) # webcam
     if not cap.isOpened():
         print("Error: Could not open webcam.")
@@ -161,11 +161,16 @@ if __name__ == '__main__':
             depth = np.repeat(depth[..., np.newaxis], 3, axis=-1)
         else:
             depth = (cmap(depth)[:, :, :3] * 255)[:, :, ::-1].astype(np.uint8)
+
         cv2.putText(depth, f'Closest: {min_val:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 255), 2)
-        cv2.putText(depth, f'Farthest: {max_val:.2f}', (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-        cv2.circle(depth, (min_loc[1], min_loc[0]), 5, (0, 255, 0), -1)  # Closest point
-        cv2.circle(depth, (max_loc[1], max_loc[0]), 5, (255, 0, 255), -1)  # Farthest point
-        cv2.putText(depth, f'Closest', (max_loc[1], max_loc[0]), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 255), 2)
+        cv2.circle(depth, (min_loc[1], min_loc[0]), 5, (255, 0, 255), -1)  # Closest point
+        cv2.putText(depth, f'Closest', (min_loc[1], min_loc[0]), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 255), 2)
+
+        
+        cv2.putText(depth, f'Farthest: {max_val:.2f}', (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+        cv2.circle(depth, (max_loc[1], max_loc[0]), 5, (0, 0, 255), -1)  # Farthest point
+        cv2.putText(depth, f'Farthest', (max_loc[1], max_loc[0]), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+
 
 
         # YOLO what do with each object detected

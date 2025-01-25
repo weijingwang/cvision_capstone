@@ -31,7 +31,7 @@ def init_depth():
     }
     
     depth_anything = DepthAnythingV2(**model_configs[args.encoder])
-    depth_anything.load_state_dict(torch.load(f'checkpoints/depth_anything_v2_{args.encoder}.pth', map_location='cpu'))
+    depth_anything.load_state_dict(torch.load(f'checkpoints/depth_anything_v2_metric_hypersim_{args.encoder}.pth', map_location='cpu'))
     depth_anything = depth_anything.to(DEVICE).eval()
 
     return args, depth_anything
