@@ -29,7 +29,8 @@ panning = 0.5      # Default panning (0.0 = left, 1.0 = right)
 sound = None
 person_detected = False
 red_circle_position = 0 
-
+# Initialize FPS variables
+prev_time = time.time()
 
 # Initialize Pygame mixer
 pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=2)
@@ -130,9 +131,9 @@ if __name__ == '__main__':
         pygame.display.flip()
         # Limit FPS to 60
         clock.tick(PYGAME_FPS)  # Returns the time passed since the last frame in milliseconds
-        pygame_fps = int(clock.get_fps())  # Get the current frames per second
+        pygame_fps = clock.get_fps()  # Get the current frames per second
         # Update window title with FPS
-        pygame.display.set_caption(f"Your phone - FPS: {pygame_fps}")
+        pygame.display.set_caption(f"Your phone - FPS: {pygame_fps:.3f}")
 
 
         person_detected = False
@@ -161,6 +162,7 @@ if __name__ == '__main__':
             depth = np.repeat(depth[..., np.newaxis], 3, axis=-1)
         else:
             depth = (cmap(depth)[:, :, :3] * 255)[:, :, ::-1].astype(np.uint8)
+        # print(raw_depth.shape, depth.shape)
 
         cv2.putText(depth, f'Closest: {min_val:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 255), 2)
         cv2.circle(depth, (min_loc[1], min_loc[0]), 5, (255, 0, 255), -1)  # Closest point
@@ -175,12 +177,42 @@ if __name__ == '__main__':
 
         # YOLO what do with each object detected
         objects = []
+        combined_mask = None
+
+        # Access masks directly from results[0].masks
+        if hasattr(results[0], "masks") and results[0].masks is not None:
+            masks = results[0].masks.data  # Masks as binary numpy arrays
+            # Combine all masks into a single mask
+            for mask in masks:
+                mask = mask.cpu().numpy().astype(np.uint8) * 255  # Convert to binary mask
+                if combined_mask is None:
+                    combined_mask = mask
+                else:
+                    combined_mask = cv2.bitwise_or(combined_mask, mask)
+        # Ensure the combined mask is not None
+        if combined_mask is None:
+            combined_mask = np.zeros((raw_frame.shape[0], raw_frame.shape[1]), dtype=np.uint8)
+
+        # Convert the combined mask to BGR for display
+        combined_mask_bgr = cv2.cvtColor(combined_mask, cv2.COLOR_GRAY2BGR)
+
+        # Resize the combined mask to match the original frame's dimensions
+        combined_mask_resized = cv2.resize(combined_mask_bgr, (raw_frame.shape[1], raw_frame.shape[0]))
+
+
+
         for detection in results[0].boxes.data:
             # YOLO save data for object
             confidence = float(detection[4])  # Confidence score
             x_min, y_min, x_max, y_max = map(float, detection[:4])  # Bounding box coordinates
             class_id = int(detection[5])  # Class ID
             objects.append((model.names[class_id], confidence))
+            label = f"{model.names[class_id]}: {confidence:.2f}"
+            # Draw the bounding box on the combined mask
+            cv2.rectangle(combined_mask_resized, (int(x_min), int(y_min)), (int(x_max), int(y_max)), (0, 255, 0), 2)
+            cv2.putText(combined_mask_resized, label, (int(x_min), int(y_min) - 10), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (0, 255, 0), 2)
+            
+
 
             # LOGIC
             if model.names[class_id] == "apple":
@@ -213,8 +245,26 @@ if __name__ == '__main__':
 
                 # Track the horizontal position of the red circle (panning position)
                 red_circle_position = x_center / raw_frame.shape[1]  # Normalize to [0, 1]
-        
+
+
         globals.objects_buffer = objects
+
+
+        raw_depth_resized = cv2.resize(raw_depth, (raw_frame.shape[1], raw_frame.shape[0]))
+        combined_mask = combined_mask.astype(np.uint8)
+        raw_depth_resized = raw_depth_resized.astype(np.uint8)
+        # print(combined_mask.shape)
+        # print(raw_depth_resized.shape)
+
+        # depth_masked = cv2.bitwise_and(combined_mask, raw_depth_resized)
+        # dm_min_val = raw_depth.min()
+        # dm_max_val = raw_depth.max()
+        # depth_masked = (depth_masked - dm_min_val) / (dm_max_val - dm_min_val) * 255.0
+        # depth_masked = depth_masked.astype(np.uint8)
+        # if args.grayscale:
+        #     depth_masked = np.repeat(depth_masked[..., np.newaxis], 3, axis=-1)
+        # else:
+        #     depth_masked = (cmap(depth_masked)[:, :, :3] * 255)[:, :, ::-1].astype(np.uint8)
 
         # Update sound
         volume = max(0.0, min(volume, MAX_SINE_VOLUME))  # Limit volume range
@@ -244,18 +294,30 @@ if __name__ == '__main__':
                 warning_channel.fadeout(500)
 
         raw_frame = results[0].plot()
+        # Calculate FPS
+        curr_time = time.time()
+        fps = 1 / (curr_time - prev_time)
+        prev_time = curr_time
+
+
+        # print(raw_frame.shape, depth.shape, combined_mask_resized.shape, depth_masked.shape)
 
         if args.pred_only:
             cv2.imshow('depth only ', depth)
         else:
-            split_region = np.ones((frame_height, MARGIN_WIDTH, 3), dtype=np.uint8) * 255
-            combined_frame = cv2.hconcat([raw_frame, split_region, depth])
-            cv2.imshow('depth together ', combined_frame)
-            
-        # Break on 'q' key press
+            blank_image = np.zeros_like(raw_frame)
+            # split_region = np.ones((frame_height, MARGIN_WIDTH, 3), dtype=np.uint8) * 255
+            top_row_frame = cv2.hconcat([raw_frame, depth])
+            bottom_row_frame = cv2.hconcat([combined_mask_resized, blank_image])
+            final_output = cv2.vconcat([top_row_frame, bottom_row_frame])
+            # cv2.imshow(f'wjdemo 2 FPS: {fps:.2f}', final_output)
+            # Update window title with FPS
+            cv2.imshow("wjdemo2", final_output)
+
+        # Break the loop on 'q' key press
         if cv2.waitKey(1) & 0xFF == ord('q'):
-            quit_app()
-            # break
+            break
+
     
     quit_app()
 
