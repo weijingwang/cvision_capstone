@@ -22,40 +22,34 @@ from sound_gen import *
 from input_handler import *
 from my_constants import *
 import globals
-# Initialize global variables for frequency, volume, and panning
+pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=2)
+pygame.init()
+
+# Demo variables
 frequency = 440.0  # Default frequency in Hz (A4)
 volume = MAX_SINE_VOLUME       # Default volume (0.0 to 1.0)
 panning = 0.5      # Default panning (0.0 = left, 1.0 = right)
 sound = None
 person_detected = False
 red_circle_position = 0 
-# Initialize FPS variables
-prev_time = time.time()
-
-# Initialize Pygame mixer
-pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=2)
-pygame.init()
-
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Your phone - FPS: 0")
-done = False
-# Square properties
-square_size = 200
-square_x = (SCREEN_WIDTH - square_size) // 2
-square_y = (SCREEN_HEIGHT - square_size) // 2
-square_rect = pygame.Rect(square_x, square_y, square_size, square_size)
-button_is_pressed = False
-font = pygame.font.Font(None, 72)  # Default font with size 36
-text_surface = font.render("PRESS", True, BLACK).convert_alpha()  # Render text
-text_rect = text_surface.get_rect(center=square_rect.center)  # Center text on square
-clock = pygame.time.Clock()
-last_click_time = 0
-double_click_threshold = 0.3  # 300 ms for a double click
-is_double_clicked = False
-is_held = False  # Tracks if the button is being held
 warning_sound = pygame.mixer.Sound('warning.ogg')
 warning_sound.set_volume(1)  # Set volume to 10%
 warning_channel = pygame.mixer.Channel(3)  # Use channel 0 for playing this sound
+
+# Pygame GUI vars
+clock = pygame.time.Clock()
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("Your phone - FPS: 0")
+font = pygame.font.Font(None, 72)  # Default font with size 36
+square_rect = pygame.Rect(SQUARE_X, SQUARE_Y, SQUARE_SIZE, SQUARE_SIZE)
+text_surface = font.render("PRESS", True, BLACK).convert_alpha()  # Render text
+text_rect = text_surface.get_rect(center=square_rect.center)  # Center text on square
+
+button_is_pressed = False
+last_click_time = 0
+is_double_clicked = False
+is_held = False  # Tracks if the button is being held
+
 
 
 def quit_app():
@@ -88,6 +82,8 @@ if __name__ == '__main__':
     if not cap.isOpened():
         print("Error: Could not open webcam.")
         exit()
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, WEBCAM_RESOLUTION[0])
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, WEBCAM_RESOLUTION[1])
     frame_width, frame_height = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     frame_rate = int(cap.get(cv2.CAP_PROP_FPS))
     if args.pred_only: 
@@ -105,7 +101,7 @@ if __name__ == '__main__':
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if square_rect.collidepoint(event.pos):
                     current_time = time.time()
-                    if current_time - last_click_time <= double_click_threshold:
+                    if current_time - last_click_time <= DOUBLE_CLICK_THRESHOLD:
                         # print("double pressed")
                         is_double_clicked = True
                     # else:
@@ -117,11 +113,9 @@ if __name__ == '__main__':
                 if square_rect.collidepoint(event.pos):
                     button_is_pressed = False
                     is_held = False
-
         if is_double_clicked:
             print("LISTEN FOR VOICE INSTRUCTIONS")
             is_double_clicked = False
-
         if button_is_pressed:
             print(f"{objects}")
         color = DARK_GREEN if button_is_pressed else GREEN
@@ -139,10 +133,10 @@ if __name__ == '__main__':
         person_detected = False
         apple_detected = False
         # Webcam variables
-        ret, raw_frame = cap.read()
+        ret, raw_frame = cap.read() #raw_frame is dtype uint8!!!
         if not ret:
             break
-        frame_width = raw_frame.shape[1]
+
         raw_frame = cv2.flip(raw_frame,1)
 
         # Run YOLOv8 inference on the frame
@@ -151,18 +145,17 @@ if __name__ == '__main__':
 
 
         # Depth math and get depth map to render
-        raw_depth = depth_anything.infer_image(raw_frame, args.input_size)
+        raw_depth = depth_anything.infer_image(raw_frame, args.input_size) #float32, same resolution as webcam
         min_val = raw_depth.min()
         max_val = raw_depth.max()
         min_loc = np.unravel_index(np.argmin(raw_depth, axis=None), raw_depth.shape)
         max_loc = np.unravel_index(np.argmax(raw_depth, axis=None), raw_depth.shape)
         depth = (raw_depth - min_val) / (max_val - min_val) * 255.0
-        depth = depth.astype(np.uint8)
+        depth = depth.astype(np.uint8) #make the depth to show uint8 as well
         if args.grayscale:
             depth = np.repeat(depth[..., np.newaxis], 3, axis=-1)
         else:
             depth = (cmap(depth)[:, :, :3] * 255)[:, :, ::-1].astype(np.uint8)
-        # print(raw_depth.shape, depth.shape)
 
         cv2.putText(depth, f'Closest: {min_val:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 255), 2)
         cv2.circle(depth, (min_loc[1], min_loc[0]), 5, (255, 0, 255), -1)  # Closest point
@@ -184,21 +177,24 @@ if __name__ == '__main__':
             masks = results[0].masks.data  # Masks as binary numpy arrays
             # Combine all masks into a single mask
             for mask in masks:
-                mask = mask.cpu().numpy().astype(np.uint8) * 255  # Convert to binary mask
+                mask = mask.cpu().numpy().astype(np.float32)  # Keep binary mask as 0s and 1s
                 if combined_mask is None:
                     combined_mask = mask
                 else:
                     combined_mask = cv2.bitwise_or(combined_mask, mask)
+
         # Ensure the combined mask is not None
         if combined_mask is None:
-            combined_mask = np.zeros((raw_frame.shape[0], raw_frame.shape[1]), dtype=np.uint8)
+            combined_mask = np.zeros((raw_frame.shape[0], raw_frame.shape[1]), dtype=np.float32)
+
+        # Resize the combined mask
+        combined_mask_resized = cv2.resize(combined_mask, (raw_frame.shape[1], raw_frame.shape[0]))
 
         # Convert the combined mask to BGR for display
-        combined_mask_bgr = cv2.cvtColor(combined_mask, cv2.COLOR_GRAY2BGR)
+        combined_mask_for_show = cv2.cvtColor(combined_mask_resized*255, cv2.COLOR_GRAY2BGR)
+        combined_mask_for_show = combined_mask_for_show.astype(np.uint8)
 
-        # Resize the combined mask to match the original frame's dimensions
-        combined_mask_resized = cv2.resize(combined_mask_bgr, (raw_frame.shape[1], raw_frame.shape[0]))
-
+        print(combined_mask.shape, combined_mask_resized.shape, combined_mask_for_show.shape)
 
 
         for detection in results[0].boxes.data:
@@ -209,8 +205,8 @@ if __name__ == '__main__':
             objects.append((model.names[class_id], confidence))
             label = f"{model.names[class_id]}: {confidence:.2f}"
             # Draw the bounding box on the combined mask
-            cv2.rectangle(combined_mask_resized, (int(x_min), int(y_min)), (int(x_max), int(y_max)), (0, 255, 0), 2)
-            cv2.putText(combined_mask_resized, label, (int(x_min), int(y_min) - 10), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (0, 255, 0), 2)
+            cv2.rectangle(combined_mask_for_show, (int(x_min), int(y_min)), (int(x_max), int(y_max)), (0, 255, 0), 2)
+            cv2.putText(combined_mask_for_show, label, (int(x_min), int(y_min) - 10), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (0, 255, 0), 2)
             
 
 
@@ -250,21 +246,35 @@ if __name__ == '__main__':
         globals.objects_buffer = objects
 
 
-        raw_depth_resized = cv2.resize(raw_depth, (raw_frame.shape[1], raw_frame.shape[0]))
-        combined_mask = combined_mask.astype(np.uint8)
-        raw_depth_resized = raw_depth_resized.astype(np.uint8)
-        # print(combined_mask.shape)
-        # print(raw_depth_resized.shape)
 
-        # depth_masked = cv2.bitwise_and(combined_mask, raw_depth_resized)
-        # dm_min_val = raw_depth.min()
-        # dm_max_val = raw_depth.max()
-        # depth_masked = (depth_masked - dm_min_val) / (dm_max_val - dm_min_val) * 255.0
-        # depth_masked = depth_masked.astype(np.uint8)
-        # if args.grayscale:
-        #     depth_masked = np.repeat(depth_masked[..., np.newaxis], 3, axis=-1)
-        # else:
-        #     depth_masked = (cmap(depth_masked)[:, :, :3] * 255)[:, :, ::-1].astype(np.uint8)
+        # print(combined_mask_resized.shape, raw_depth.shape)
+
+        depth_masked = combined_mask_resized * raw_depth
+
+        # Step 1: Identify non-zero elements
+        non_zero_elements = depth_masked[depth_masked != 0]
+
+        # Step 2: Calculate the average of non-zero elements
+        average_non_zero = np.mean(non_zero_elements)
+
+        # Step 3: Calculate the percentage of non-zero elements
+        total_elements = depth_masked.size
+        non_zero_count = non_zero_elements.size
+        percentage_non_zero = (non_zero_count / total_elements) * 100
+
+        # Print the results
+        print(f"Average of non-zero elements: {average_non_zero}")
+        print(f"Percentage of non-zero elements: {percentage_non_zero}%")
+
+
+        dm_min_val = depth_masked.min()
+        dm_max_val = depth_masked.max()
+        depth_masked = (depth_masked - dm_min_val) / (dm_max_val - dm_min_val) * 255.0
+        depth_masked = depth_masked.astype(np.uint8)
+        if args.grayscale:
+            depth_masked = np.repeat(depth_masked[..., np.newaxis], 3, axis=-1)
+        else:
+            depth_masked = (cmap(depth_masked)[:, :, :3] * 255)[:, :, ::-1].astype(np.uint8)
 
         # Update sound
         volume = max(0.0, min(volume, MAX_SINE_VOLUME))  # Limit volume range
@@ -293,25 +303,18 @@ if __name__ == '__main__':
             if warning_channel.get_busy():  # Check if the channel is not currently playing a sound
                 warning_channel.fadeout(500)
 
+
         raw_frame = results[0].plot()
-        # Calculate FPS
-        curr_time = time.time()
-        fps = 1 / (curr_time - prev_time)
-        prev_time = curr_time
-
-
-        # print(raw_frame.shape, depth.shape, combined_mask_resized.shape, depth_masked.shape)
+        print(raw_frame.dtype, combined_mask_for_show.dtype, depth.dtype, depth_masked.dtype)
 
         if args.pred_only:
             cv2.imshow('depth only ', depth)
         else:
             blank_image = np.zeros_like(raw_frame)
-            # split_region = np.ones((frame_height, MARGIN_WIDTH, 3), dtype=np.uint8) * 255
             top_row_frame = cv2.hconcat([raw_frame, depth])
-            bottom_row_frame = cv2.hconcat([combined_mask_resized, blank_image])
+            bottom_row_frame = cv2.hconcat([combined_mask_for_show, depth_masked])
             final_output = cv2.vconcat([top_row_frame, bottom_row_frame])
-            # cv2.imshow(f'wjdemo 2 FPS: {fps:.2f}', final_output)
-            # Update window title with FPS
+
             cv2.imshow("wjdemo2", final_output)
 
         # Break the loop on 'q' key press
