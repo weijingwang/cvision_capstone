@@ -184,8 +184,7 @@ if __name__ == '__main__':
 
         # YOLO what do with each object detected
         objects = []
-        combined_mask = None
-        
+        combined_mask = np.zeros(raw_frame.shape[:2], dtype=np.uint8)  # Same size as the frame        
         for result in results:
             masks = result.masks  # Segmentation masks
             boxes = result.boxes  # Bounding boxes
@@ -229,12 +228,19 @@ if __name__ == '__main__':
                     if names[class_id] == "apple":
                         apple_detected = True
 
-                    if names[class_id] == "person":
-                        mask = np.array(masks.xy[i], dtype=np.uint8)
-                        if combined_mask is None:
-                            combined_mask = mask
-                        else:
-                            combined_mask = cv2.bitwise_or(combined_mask, mask)
+                    # Check if the detected object is a person
+                    if class_name == "person":
+                        # Get mask for the current person
+                        mask = masks.xy[i]  # Polygon points for the mask
+
+                        # Convert polygon points to a binary mask
+                        mask_pts = np.array(mask, dtype=np.int32)
+                        person_mask = np.zeros(raw_frame.shape[:2], dtype=np.uint8)
+                        cv2.fillPoly(person_mask, [mask_pts], 1)  # Fill the polygon with 1s
+
+                        # Combine the person mask with the combined mask using logical OR
+                        combined_mask = cv2.bitwise_or(combined_mask, person_mask)
+
 
                         person_detected = True
                         x_center = int((x1 + x2) / 2)
@@ -268,9 +274,6 @@ if __name__ == '__main__':
 
         # # At this point, combined_mask contains the combined mask for the "person" class
         # Ensure the combined mask is not None
-        if combined_mask is None:
-            combined_mask = np.zeros((raw_frame.shape[0], raw_frame.shape[1]), dtype=np.float32)
-
         # Resize the combined mask
         combined_mask_resized = cv2.resize(combined_mask, (raw_frame.shape[1], raw_frame.shape[0]))
 
@@ -369,7 +372,7 @@ if __name__ == '__main__':
 
 
 
-        print(combined_mask_resized.shape, raw_depth.shape)
+        # print(combined_mask_resized.shape, raw_depth.shape)
 
         depth_masked = combined_mask_resized * raw_depth
 
@@ -425,7 +428,7 @@ if __name__ == '__main__':
             if warning_channel.get_busy():  # Check if the channel is not currently playing a sound
                 warning_channel.fadeout(500)
 
-        # cv2.putText(depth_masked, f'Avg_dist {average_non_zero:.2f}', (x_center-10, y_center), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE-0.5, (255, 0, 255), 2, cv2.LINE_AA)
+        cv2.putText(depth_masked, f'Avg_dist {average_non_zero:.2f}', (x_center-10, y_center), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE-0.5, (255, 0, 255), 2, cv2.LINE_AA)
 
         # raw_frame = results[0].plot()
         # print(raw_frame.dtype, combined_mask_for_show.dtype, depth.dtype, depth_masked.dtype)
@@ -435,7 +438,7 @@ if __name__ == '__main__':
         else:
             blank_image = np.zeros_like(raw_frame)
             top_row_frame = cv2.hconcat([raw_frame, depth])
-            bottom_row_frame = cv2.hconcat([blank_image, blank_image])#combined_mask_for_show
+            bottom_row_frame = cv2.hconcat([combined_mask_for_show, depth_masked])
             final_output = cv2.vconcat([top_row_frame, bottom_row_frame])
 
             cv2.imshow("wjdemo2", final_output)
