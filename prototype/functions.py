@@ -177,19 +177,29 @@ def get_bboxes(yolo_output_json, im_shape):
     return bboxes
 
 
-def filter_results(objects, distances, positions, distance_threshold, angle_threshold):
+def filter_results(objects, distances, positions, distance_threshold, angle_threshold, num_objects=3):
     """
     Filters the objects, distances, and positions based on thresholds.
+    Sorts the objects by distances and returns the closest num_objects.
     """
     filtered_objects = []
     filtered_distances = []
     filtered_positions = []
 
-    for obj, dist, angle in zip(objects, distances, positions):
+    # Sort objects by distances
+    sorted_indices = np.argsort(distances)
+    sorted_objects = [objects[i] for i in sorted_indices]
+    sorted_distances = [distances[i] for i in sorted_indices]
+    sorted_positions = [positions[i] for i in sorted_indices]
+
+    for obj, dist, angle in zip(sorted_objects, sorted_distances, sorted_positions):
         if dist <= distance_threshold and abs(angle) <= angle_threshold:
             filtered_objects.append(obj)
             filtered_distances.append(dist)
             filtered_positions.append(angle)
+
+        if len(filtered_objects) == num_objects:
+            break
 
     return filtered_objects, filtered_distances, filtered_positions
 
