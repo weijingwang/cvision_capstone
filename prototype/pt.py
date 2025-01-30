@@ -1,6 +1,6 @@
 import os
 from ml_depth_pro.src.depth_pro import depth_pro
-from prototype.functions import get_oda
+from functions import get_oda
 from new_audio import text_to_speech_proximity_spatial
 from PIL import Image
 
