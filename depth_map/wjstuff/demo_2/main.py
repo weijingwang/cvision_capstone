@@ -50,6 +50,12 @@ last_click_time = 0
 is_double_clicked = False
 is_held = False  # Tracks if the button is being held
 
+# Inverse square law function for volume
+def calculate_volume(depth):
+    if depth <= 1: #1meter
+        return 1.0  # Max volume for distances <= 1 meter
+    else:
+        return min(1.0, 1.0 / (depth ** 2))  # Inverse square law for distances > 1 meter
 
 
 def quit_app():
@@ -78,7 +84,7 @@ if __name__ == '__main__':
 
     # Initialize webcam
     cmap = matplotlib.colormaps.get_cmap('gray')
-    cap = cv2.VideoCapture(0) # webcam
+    cap = cv2.VideoCapture(WEBCAM_PATH) # webcam
     if not cap.isOpened():
         print("Error: Could not open webcam.")
         exit()
@@ -98,6 +104,7 @@ if __name__ == '__main__':
     total_cycle_time = 0
     total_inference_time = 0
     frame_count = 0
+    depth_person = np.inf
 
     #Program "Grand loop"
     while cap.isOpened():
@@ -229,7 +236,7 @@ if __name__ == '__main__':
                         apple_detected = True
 
                     # Check if the detected object is a person
-                    if class_name == "person":
+                    if class_name == "cell phone":
                         # Get mask for the current person
                         mask = masks.xy[i]  # Polygon points for the mask
 
@@ -255,14 +262,14 @@ if __name__ == '__main__':
                         else:
                             print(f"Coordinates ({x}, {y}) are out of bounds for the depth map with shape {raw_depth.shape}.")
 
-                        if depth_person >= 4:
-                            volume = MAX_SINE_VOLUME
-                        elif depth_person <= 3:
-                            volume = 0.0
-                        else:
-                            # Linear interpolation between 3 and 4
-                            volume = MAX_SINE_VOLUME * ((depth_person - 3) / (4 - 3))
-
+                        # if depth_person >= 4:
+                        #     volume = MAX_SINE_VOLUME
+                        # elif depth_person <= 3:
+                        #     volume = 0.0
+                        # else:
+                        #     # Linear interpolation between 3 and 4
+                        #     volume = MAX_SINE_VOLUME * ((depth_person - 3) / (4 - 3))
+                        volume = calculate_volume(depth_person)
                         # Draw a red circle at the center of the bounding box
                         cv2.circle(raw_frame, (x_center, y_center), radius=50, color=(0, 0, 255), thickness=-1)
 
@@ -402,18 +409,19 @@ if __name__ == '__main__':
             depth_masked = (cmap(depth_masked)[:, :, :3] * 255)[:, :, ::-1].astype(np.uint8)
 
         # Update sound
-        volume = max(0.0, min(volume, MAX_SINE_VOLUME))  # Limit volume range
+        # volume = max(0.0, min(volume, MAX_SINE_VOLUME))  # Limit volume range
+        volume = calculate_volume(depth_person)
         panning = max(0.0, min(red_circle_position, 1.0))  # Limit panning range
-        wave = generate_sine_wave(frequency, SAMPLE_RATE, volume, panning, DURATION)
-
+        wave = generate_sound_wave(frequency, SAMPLE_RATE, volume, panning, DURATION, squarewave=apple_detected)
+ 
         #if there is a person on screen, play sound
         if person_detected:
             # print(f"person. Pan: {panning}, Vol: {volume}, depth: {depth_person}")
             # Rendering the text on top
-            cv2.putText(depth, f'Pan: {panning:.2f}', (10, 300), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (255, 0, 255), 3, cv2.LINE_AA)
-            cv2.putText(depth, f'Vol: {volume:.2f}', (10, 500), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (0, 255, 0), 3, cv2.LINE_AA)
-            cv2.putText(depth, f'DepthPerson: ', (10, 700), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (0, 0, 255), 3, cv2.LINE_AA)
-#{depth_person:.2f}
+            cv2.putText(depth, f'Pan: {panning:.2f}', (10, 200), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (255, 0, 255), 3, cv2.LINE_AA)
+            cv2.putText(depth, f'Vol: {volume:.2f}', (10, 300), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (0, 255, 0), 3, cv2.LINE_AA)
+            cv2.putText(depth, f'DepthPerson: {depth_person:.2f}', (10, 400), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (0, 0, 255), 3, cv2.LINE_AA)
+
             if sound is None:
                 sound = pygame.sndarray.make_sound(wave)
             else:
@@ -428,7 +436,8 @@ if __name__ == '__main__':
             if warning_channel.get_busy():  # Check if the channel is not currently playing a sound
                 warning_channel.fadeout(500)
 
-        cv2.putText(depth_masked, f'Avg_dist {average_non_zero:.2f}', (x_center-10, y_center), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE-0.5, (255, 0, 255), 2, cv2.LINE_AA)
+        if person_detected:
+            cv2.putText(depth_masked, f'Avg_dist {average_non_zero:.2f}', (x_center-10, y_center), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE-0.5, (255, 0, 255), 2, cv2.LINE_AA)
 
         # raw_frame = results[0].plot()
         # print(raw_frame.dtype, combined_mask_for_show.dtype, depth.dtype, depth_masked.dtype)

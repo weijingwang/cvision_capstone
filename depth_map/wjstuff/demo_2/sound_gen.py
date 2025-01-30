@@ -1,12 +1,15 @@
 """Generate sounds"""
 
 import numpy as np
+from scipy.signal import square
 
-def generate_sine_wave(frequency, sample_rate, volume, panning, duration=0.1):
+def generate_sound_wave(frequency, sample_rate, volume, panning, duration=0.1, squarewave=False):
     """Generate a stereo sine wave with the given parameters."""
     t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
-    wave = np.sin(2 * np.pi * frequency * t) * volume
-
+    if squarewave:
+        wave = square(2 * np.pi * frequency * t) * volume
+    else:
+        wave = np.sin(2 * np.pi * frequency * t) * volume
     # Apply panning
     left = wave * (1 - panning)
     right = wave * panning
