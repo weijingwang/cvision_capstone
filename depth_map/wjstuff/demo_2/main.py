@@ -93,8 +93,17 @@ if __name__ == '__main__':
     print("Webcam started...")
     print("Fully Initialized")
 
+
+    # Variables for timing
+    total_cycle_time = 0
+    total_inference_time = 0
+    frame_count = 0
+
     #Program "Grand loop"
     while cap.isOpened():
+        # Start timing the entire cycle
+        cycle_start_time = time.time()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 quit_app()
@@ -140,10 +149,14 @@ if __name__ == '__main__':
         raw_frame = cv2.flip(raw_frame,1)
 
         # Run YOLOv8 inference on the frame
+        # Start timing the inference step
+        inference_start_time = time.time()
         results = model(raw_frame, verbose=False)
-        
+        # End timing the inference step
+        inference_time = time.time() - inference_start_time
+        total_inference_time += inference_time
 
-
+        depth_start_time = time.time()
         # Depth math and get depth map to render
         raw_depth = depth_anything.infer_image(raw_frame, args.input_size) #float32, same resolution as webcam
         min_val = raw_depth.min()
@@ -165,24 +178,95 @@ if __name__ == '__main__':
         cv2.putText(depth, f'Farthest: {max_val:.2f}', (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
         cv2.circle(depth, (max_loc[1], max_loc[0]), 5, (0, 0, 255), -1)  # Farthest point
         cv2.putText(depth, f'Farthest', (max_loc[1], max_loc[0]), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+        depth_time = time.time() - depth_start_time
 
 
 
         # YOLO what do with each object detected
         objects = []
         combined_mask = None
+        
+        for result in results:
+            masks = result.masks  # Segmentation masks
+            boxes = result.boxes  # Bounding boxes
+            names = model.names   # Class names
 
-        # Access masks directly from results[0].masks
-        if hasattr(results[0], "masks") and results[0].masks is not None:
-            masks = results[0].masks.data  # Masks as binary numpy arrays
-            # Combine all masks into a single mask
-            for mask in masks:
-                mask = mask.cpu().numpy().astype(np.float32)  # Keep binary mask as 0s and 1s
-                if combined_mask is None:
-                    combined_mask = mask
-                else:
-                    combined_mask = cv2.bitwise_or(combined_mask, mask)
+            # Check if masks and boxes are available
+            if masks is not None and boxes is not None:
+                # Iterate over each detected object
+                for i in range(len(boxes)):
+                    
+                    # Get bounding box coordinates
+                    bbox = boxes.xyxy[i].cpu().numpy()
+                    x1, y1, x2, y2 = map(int, bbox)  # Convert to integers
 
+                    # Get confidence score
+                    confidence = boxes.conf[i].item()
+
+                    # Get class ID and class name
+                    class_id = int(boxes.cls[i])
+                    class_name = names[class_id]
+
+                    objects.append((names[class_id], confidence))
+
+                    # Get mask for the current object
+                    mask_points = masks.xy[i].astype(int)  # Convert to integers
+
+
+                    # Draw bounding box
+                    cv2.rectangle(raw_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+                    # Draw mask overlay
+                    overlay = raw_frame.copy()
+                    cv2.fillPoly(overlay, [mask_points], (0, 255, 0))
+                    raw_frame = cv2.addWeighted(overlay, 0.3, raw_frame, 0.7, 0)
+
+                    # Add label
+                    label = f"{class_name} {confidence:.2f}"
+                    cv2.putText(raw_frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+
+                    # LOGIC
+                    if names[class_id] == "apple":
+                        apple_detected = True
+
+                    if names[class_id] == "person":
+                        mask = np.array(masks.xy[i], dtype=np.uint8)
+                        if combined_mask is None:
+                            combined_mask = mask
+                        else:
+                            combined_mask = cv2.bitwise_or(combined_mask, mask)
+
+                        person_detected = True
+                        x_center = int((x1 + x2) / 2)
+                        y_center = int((y1 + y2) / 2)
+                        # Infer depth map from the raw_frame
+                        # Get the depth value at the specified location (100, 100)
+                        x, y = x_center, y_center  # Coordinates of the pixel
+                        
+                        if 0 <= y < raw_depth.shape[0] and 0 <= x < raw_depth.shape[1]:  # Check bounds
+                            depth_person = raw_depth[y, x]  # Access depth at (row=y, col=x)
+                            # print(f"Depth value at ({x}, {y}): {depth_person}")
+                        else:
+                            print(f"Coordinates ({x}, {y}) are out of bounds for the depth map with shape {raw_depth.shape}.")
+
+                        if depth_person >= 4:
+                            volume = MAX_SINE_VOLUME
+                        elif depth_person <= 3:
+                            volume = 0.0
+                        else:
+                            # Linear interpolation between 3 and 4
+                            volume = MAX_SINE_VOLUME * ((depth_person - 3) / (4 - 3))
+
+                        # Draw a red circle at the center of the bounding box
+                        cv2.circle(raw_frame, (x_center, y_center), radius=50, color=(0, 0, 255), thickness=-1)
+
+                        # Track the horizontal position of the red circle (panning position)
+                        red_circle_position = x_center / raw_frame.shape[1]  # Normalize to [0, 1]
+
+
+        globals.objects_buffer = objects
+
+        # # At this point, combined_mask contains the combined mask for the "person" class
         # Ensure the combined mask is not None
         if combined_mask is None:
             combined_mask = np.zeros((raw_frame.shape[0], raw_frame.shape[1]), dtype=np.float32)
@@ -197,57 +281,95 @@ if __name__ == '__main__':
         print(combined_mask.shape, combined_mask_resized.shape, combined_mask_for_show.shape)
 
 
-        for detection in results[0].boxes.data:
-            # YOLO save data for object
-            confidence = float(detection[4])  # Confidence score
-            x_min, y_min, x_max, y_max = map(float, detection[:4])  # Bounding box coordinates
-            class_id = int(detection[5])  # Class ID
-            objects.append((model.names[class_id], confidence))
-            label = f"{model.names[class_id]}: {confidence:.2f}"
-            # Draw the bounding box on the combined mask
-            cv2.rectangle(combined_mask_for_show, (int(x_min), int(y_min)), (int(x_max), int(y_max)), (0, 255, 0), 2)
-            cv2.putText(combined_mask_for_show, label, (int(x_min), int(y_min) - 10), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (0, 255, 0), 2)
+
+        # # Access masks directly from results[0].masks
+        # if hasattr(results[0], "masks") and results[0].masks is not None:
+        #     masks = results[0].masks.data  # Masks as binary numpy arrays
+        #     classes = results[0].boxes.cls  # Class indices for the masks
+        #     class_names = results[0].names  # Class name mapping (index to name)
+
+        #     combined_mask = None
+
+        #     # Combine masks only for "person" class
+        #     for mask, cls in zip(masks, classes):
+        #         if class_names[int(cls)] == "person":
+        #             mask = mask.cpu().numpy().astype(np.float32)  # Keep binary mask as 0s and 1s
+        #             if combined_mask is None:
+        #                 combined_mask = mask
+        #             else:
+        #                 combined_mask = cv2.bitwise_or(combined_mask, mask)
+
+        # # At this point, combined_mask contains the combined mask for the "person" class
+
+        # # Ensure the combined mask is not None
+        # if combined_mask is None:
+        #     combined_mask = np.zeros((raw_frame.shape[0], raw_frame.shape[1]), dtype=np.float32)
+
+        # # Resize the combined mask
+        # combined_mask_resized = cv2.resize(combined_mask, (raw_frame.shape[1], raw_frame.shape[0]))
+
+        # # Convert the combined mask to BGR for display
+        # combined_mask_for_show = cv2.cvtColor(combined_mask_resized*255, cv2.COLOR_GRAY2BGR)
+        # combined_mask_for_show = combined_mask_for_show.astype(np.uint8)
+
+        # print(combined_mask.shape, combined_mask_resized.shape, combined_mask_for_show.shape)
+
+        # for result in results:
+        #     masks = result.masks  # Extract masks
+        #     boxes = result.boxes  # Bounding boxes
+        #     names = model.names   # Class names
+
+        # for detection in results[0].boxes.data:
+        #     # YOLO save data for object
+        #     confidence = float(detection[4])  # Confidence score
+        #     x_min, y_min, x_max, y_max = map(float, detection[:4])  # Bounding box coordinates
+        #     class_id = int(detection[5])  # Class ID
+        #     objects.append((model.names[class_id], confidence))
+        #     label = f"{model.names[class_id]}: {confidence:.2f}"
+        #     # Draw the bounding box on the combined mask
+        #     cv2.rectangle(combined_mask_for_show, (int(x_min), int(y_min)), (int(x_max), int(y_max)), (0, 255, 0), 2)
+        #     cv2.putText(combined_mask_for_show, label, (int(x_min), int(y_min) - 10), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (0, 255, 0), 2)
             
 
 
-            # LOGIC
-            if model.names[class_id] == "apple":
-                apple_detected = True
+        #     # LOGIC
+        #     if model.names[class_id] == "apple":
+        #         apple_detected = True
 
-            if model.names[class_id] == "person":
-                person_detected = True
-                x_center = int((x_min + x_max) / 2)
-                y_center = int((y_min + y_max) / 2)
-                # Infer depth map from the raw_frame
-                # Get the depth value at the specified location (100, 100)
-                x, y = x_center, y_center  # Coordinates of the pixel
+        #     if model.names[class_id] == "person":
+        #         person_detected = True
+        #         x_center = int((x_min + x_max) / 2)
+        #         y_center = int((y_min + y_max) / 2)
+        #         # Infer depth map from the raw_frame
+        #         # Get the depth value at the specified location (100, 100)
+        #         x, y = x_center, y_center  # Coordinates of the pixel
                 
-                if 0 <= y < raw_depth.shape[0] and 0 <= x < raw_depth.shape[1]:  # Check bounds
-                    depth_person = raw_depth[y, x]  # Access depth at (row=y, col=x)
-                    # print(f"Depth value at ({x}, {y}): {depth_person}")
-                else:
-                    print(f"Coordinates ({x}, {y}) are out of bounds for the depth map with shape {raw_depth.shape}.")
+        #         if 0 <= y < raw_depth.shape[0] and 0 <= x < raw_depth.shape[1]:  # Check bounds
+        #             depth_person = raw_depth[y, x]  # Access depth at (row=y, col=x)
+        #             # print(f"Depth value at ({x}, {y}): {depth_person}")
+        #         else:
+        #             print(f"Coordinates ({x}, {y}) are out of bounds for the depth map with shape {raw_depth.shape}.")
 
-                if depth_person >= 4:
-                    volume = MAX_SINE_VOLUME
-                elif depth_person <= 3:
-                    volume = 0.0
-                else:
-                    # Linear interpolation between 3 and 4
-                    volume = MAX_SINE_VOLUME * ((depth_person - 3) / (4 - 3))
+        #         if depth_person >= 4:
+        #             volume = MAX_SINE_VOLUME
+        #         elif depth_person <= 3:
+        #             volume = 0.0
+        #         else:
+        #             # Linear interpolation between 3 and 4
+        #             volume = MAX_SINE_VOLUME * ((depth_person - 3) / (4 - 3))
 
-                # Draw a red circle at the center of the bounding box
-                cv2.circle(raw_frame, (x_center, y_center), radius=50, color=(0, 0, 255), thickness=-1)
+        #         # Draw a red circle at the center of the bounding box
+        #         cv2.circle(raw_frame, (x_center, y_center), radius=50, color=(0, 0, 255), thickness=-1)
 
-                # Track the horizontal position of the red circle (panning position)
-                red_circle_position = x_center / raw_frame.shape[1]  # Normalize to [0, 1]
-
-
-        globals.objects_buffer = objects
+        #         # Track the horizontal position of the red circle (panning position)
+        #         red_circle_position = x_center / raw_frame.shape[1]  # Normalize to [0, 1]
 
 
+        # globals.objects_buffer = objects
 
-        # print(combined_mask_resized.shape, raw_depth.shape)
+
+
+        print(combined_mask_resized.shape, raw_depth.shape)
 
         depth_masked = combined_mask_resized * raw_depth
 
@@ -287,8 +409,8 @@ if __name__ == '__main__':
             # Rendering the text on top
             cv2.putText(depth, f'Pan: {panning:.2f}', (10, 300), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (255, 0, 255), 3, cv2.LINE_AA)
             cv2.putText(depth, f'Vol: {volume:.2f}', (10, 500), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (0, 255, 0), 3, cv2.LINE_AA)
-            cv2.putText(depth, f'DepthPerson: {depth_person:.2f}', (10, 700), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (0, 0, 255), 3, cv2.LINE_AA)
-
+            cv2.putText(depth, f'DepthPerson: ', (10, 700), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (0, 0, 255), 3, cv2.LINE_AA)
+#{depth_person:.2f}
             if sound is None:
                 sound = pygame.sndarray.make_sound(wave)
             else:
@@ -303,16 +425,17 @@ if __name__ == '__main__':
             if warning_channel.get_busy():  # Check if the channel is not currently playing a sound
                 warning_channel.fadeout(500)
 
+        # cv2.putText(depth_masked, f'Avg_dist {average_non_zero:.2f}', (x_center-10, y_center), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE-0.5, (255, 0, 255), 2, cv2.LINE_AA)
 
-        raw_frame = results[0].plot()
-        print(raw_frame.dtype, combined_mask_for_show.dtype, depth.dtype, depth_masked.dtype)
+        # raw_frame = results[0].plot()
+        # print(raw_frame.dtype, combined_mask_for_show.dtype, depth.dtype, depth_masked.dtype)
 
         if args.pred_only:
             cv2.imshow('depth only ', depth)
         else:
             blank_image = np.zeros_like(raw_frame)
             top_row_frame = cv2.hconcat([raw_frame, depth])
-            bottom_row_frame = cv2.hconcat([combined_mask_for_show, depth_masked])
+            bottom_row_frame = cv2.hconcat([blank_image, blank_image])#combined_mask_for_show
             final_output = cv2.vconcat([top_row_frame, bottom_row_frame])
 
             cv2.imshow("wjdemo2", final_output)
@@ -320,6 +443,11 @@ if __name__ == '__main__':
         # Break the loop on 'q' key press
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+        # End timing the entire cycle
+        cycle_time = time.time() - cycle_start_time
+        total_cycle_time += cycle_time
+        frame_count += 1
+        print(f"Tot: {int(cycle_time*1000)}ms, YOLO: {int(inference_time*1000)}ms, Depth: {int(depth_time*1000)}ms, Other: {int((cycle_time-inference_time-depth_time)*1000)}ms")
 
     
     quit_app()
