@@ -19,8 +19,9 @@ def input_listener():  # Function to listen for specific key inputs
     # state = 0
     # voice_command = ''
     # objects_buffer = []
-    print("Press '0 for main' or '1 for voice': ")
     while True:
+        print(globals.objects_buffer)
+
         try:
             user_input = input("").strip().lower()
             if globals.state == 0:

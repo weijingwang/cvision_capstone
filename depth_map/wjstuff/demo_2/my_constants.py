@@ -8,8 +8,8 @@ MAX_SINE_VOLUME = 0.3
 WEBCAM_PATH = 0 #'apple_phone_low.mp4'
 # 'person_walk_test_HD.mp4'
 #COCO dataset. CAPS are what we want but not in dataset
-IMPORTANT_OBJECTS = ['traffic light', 'stop sign', 'WALL', 'STAIRS', 'STEP', 'OBJECTS IN WAY', 'PATH']
-DANGEROUS_OBJECTS = ['bus', 'train', 'truck', 'bear', 'THINGS SPEEDING AT YOU', 'CLIFF']
+IMPORTANT_OBJECTS = ['person', 'traffic light', 'stop sign', 'WALL', 'STAIRS', 'STEP', 'OBJECTS IN WAY', 'PATH']
+DANGEROUS_OBJECTS = ['apple', 'car', 'bus', 'train', 'truck', 'bear', 'THINGS SPEEDING AT YOU', 'CLIFF']
 
 #pygame demo stuff
 SCREEN_WIDTH = 300

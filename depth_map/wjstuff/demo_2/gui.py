@@ -8,12 +8,11 @@ def quit_app():
     exit()
 
 
-def handle_gui_events(square_rect):
+def handle_gui_events(square_rect, last_click_time):
     # Initialize state variables
     button_is_pressed = False
     is_held = False
     is_double_clicked = False
-    global last_click_time  # Use a global variable to track the last click time
 
     # Event handling
     for event in pygame.event.get():
