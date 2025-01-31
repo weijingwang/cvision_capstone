@@ -4,15 +4,23 @@ import time
 import tempfile
 import numpy as np
 from PIL import Image
+import matplotlib.pyplot as plt
+
+# Enable interactive mode
+# plt.ion()
 
 # Your existing module imports
 from ml_depth_pro.src.depth_pro import depth_pro
 from functions import get_oda
 from new_audio import text_to_speech_proximity_spatial
+import imageio
+import os
+import imageio
+from PIL import Image
 
 # Constants
 MISC_DIR = "./misc"  # Directory containing images or where you store temp frames, etc.
-DISTANCE_THRESHOLD = 10  # in meters
+DISTANCE_THRESHOLD = 100  # in meters
 ANGLE_THRESHOLD = 180    # Angle from the center that is desired
 NORMALIZED_ANGLE_THRESHOLD = ANGLE_THRESHOLD / 180.0
 
@@ -99,6 +107,9 @@ def process_video(video_name):
             # Save the current frame to disk
             Image.fromarray(frame_rgb).save(tmp_file.name)
             temp_frame_path = tmp_file.name
+        
+        save_path = os.path.join(MISC_DIR, "gif", f"frame_{current_frame_index}.jpg")
+        print(save_path)
 
         # Now run the usual pipeline on this temp image file
         try:
@@ -107,9 +118,10 @@ def process_video(video_name):
                 DISTANCE_THRESHOLD,
                 NORMALIZED_ANGLE_THRESHOLD,
                 model,
-                transform
+                transform,
+                save_path,
             )
-            text_to_speech_proximity_spatial(objects, distances, angles)
+            # text_to_speech_proximity_spatial(objects, distances, angles) # commented for debugging
         except Exception as e:
             print(f"Error processing video frame {current_frame_index}: {e}")
         
@@ -129,7 +141,49 @@ def process_video(video_name):
         if current_frame_index >= cap.get(cv2.CAP_PROP_FRAME_COUNT):
             break
 
+        # Optional: Print progress
+        print(f"Processed frame {current_frame_index - (1 + frames_to_skip)}; skipping {frames_to_skip} frames.")
+
     cap.release()
+
+    
+
+    def create_gif():
+        gif_folder = os.path.join(MISC_DIR, "gif")
+        gif_images = [image for image in os.listdir(gif_folder) if image.endswith(".jpg")]
+        gif_images.sort()  # Sort the images in ascending order
+
+        gif_path = os.path.join(MISC_DIR, "output.gif")
+
+        # Create temporary GIF without loop (ImageIO)
+        temp_gif_path = os.path.join(MISC_DIR, "temp.gif")
+        
+        with imageio.get_writer(temp_gif_path, mode="I") as writer:
+            for image_name in gif_images:
+                image_path = os.path.join(gif_folder, image_name)
+                image = imageio.imread(image_path)
+                
+                # Append multiple times to slow down the GIF
+                for _ in range(12):  # Repeat each frame 12 times
+                    writer.append_data(image)
+
+        # Use PIL to add infinite looping
+        images = [Image.open(os.path.join(gif_folder, img)) for img in gif_images]
+        images[0].save(
+            gif_path,
+            save_all=True,
+            append_images=images[1:],  # Append all other frames
+            duration=200,  # Adjust speed (200ms per frame)
+            loop=0  # This ensures an infinite loop
+        )
+
+        print(f"GIF created successfully at: {gif_path}")
+
+
+
+    # Call the create_gif function after processing the video
+    create_gif()
+    
     print("Finished processing video.\n")
 
 # Interactive loop
