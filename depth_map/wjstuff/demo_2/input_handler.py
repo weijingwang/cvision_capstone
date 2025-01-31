@@ -12,16 +12,17 @@ MY STATES input guide
 """
 
 import globals
-
+from my_constants import *
+from utils import *
 
 def input_listener():  # Function to listen for specific key inputs
     """Thread to listen for key inputs and print specific outputs."""
     # state = 0
     # voice_command = ''
     # objects_buffer = []
-    while True:
-        print(globals.objects_buffer)
+    print('Enter 1 for voice activation:')
 
+    while True:
         try:
             user_input = input("").strip().lower()
             if globals.state == 0:
@@ -30,7 +31,7 @@ def input_listener():  # Function to listen for specific key inputs
                     print("main")
                 elif user_input == '1':
                     globals.state = 1
-                    print("voice")
+                    print("voice mode: enter class name to guide to")
                 else:
                     print("Invalid key. Press '0' or '1'.")
 
@@ -39,10 +40,14 @@ def input_listener():  # Function to listen for specific key inputs
                     print('listing all the objects...')
                     print(globals.objects_buffer)
                     
-                else:
+                elif is_word_in_set(user_input, MODEL_NAMES):
                     globals.voice_command = user_input
                     print(f'guiding you to {globals.voice_command} and then it finished')
+                else:
+                    print("unknown object")
                 globals.state = 0 #move someplace else later
+                print('Enter 1 for voice activation:')
+
 
         except Exception as e:
             print(f"Error: {e}")

@@ -12,7 +12,6 @@ Enter 1 to enter the voice activation state
 1/17/25 Demo Prototype ok. Depthmap and volume not working. Need to replace with depthpro maybe -wj
 1/30/25 Refactored code
 """
-from utils import *
 import time
 import pygame
 import threading
@@ -130,6 +129,17 @@ if __name__ == '__main__':
 
         # update sound based on camera input and processing
         wave = update_sound(depth_person, red_circle_position, frequency, apple_detected)
+
+        # LOGIC
+        # print(globals.objects_buffer)
+        objects_only = [item[0] for item in globals.objects_buffer]
+        # print(objects_only)
+        for element in objects_only:
+            if element in DANGEROUS_OBJECTS:
+                print("DANGER:", element, "detected!!!")
+        for element in objects_only:
+            if element in IMPORTANT_OBJECTS:
+                print("IMPORTANT:", element, "detected!!!")
 
         # SOUND LOGIC
         #if there is a person on screen, play sound

@@ -10,6 +10,7 @@ from my_constants import *
 
 def init_objectDet():
     model = YOLO('yolov8n-seg.pt')  # Use the appropriate YOLOv8 model variant (n, s, m, l, x)
+    # MODEL_NAMES = list(model.names.values())
     return model
 
 def process_SAM_mask(combined_mask):
