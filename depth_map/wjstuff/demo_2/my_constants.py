@@ -3,9 +3,10 @@ WEBCAM_RESOLUTION = (640, 480)#(1280, 720)
 SAMPLE_RATE = 44100
 DURATION = 1  # Short buffer duration for real-time updates
 MARGIN_WIDTH = 50
-FONT_SCALE = 1.5  # Adjust this for desired text size
+FONT_SCALE = 1.2  # Adjust this for desired text size
 MAX_SINE_VOLUME = 0.3
-
+WEBCAM_PATH = 0 #'apple_phone_low.mp4'
+# 'person_walk_test_HD.mp4'
 #COCO dataset. CAPS are what we want but not in dataset
 IMPORTANT_OBJECTS = ['traffic light', 'stop sign', 'WALL', 'STAIRS', 'STEP', 'OBJECTS IN WAY', 'PATH']
 DANGEROUS_OBJECTS = ['bus', 'train', 'truck', 'bear', 'THINGS SPEEDING AT YOU', 'CLIFF']
