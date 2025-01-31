@@ -1,6 +1,7 @@
 import pygame
 import time
 from my_constants import *
+import globals
 
 
 def quit_app():
@@ -46,7 +47,11 @@ def render_gui(screen, square_rect, text_surface, text_rect, objects, button_is_
 
     # Render the screen
     color = DARK_GREEN if button_is_pressed else GREEN
-    screen.fill(WHITE)  # Clear screen
+    if globals.announce_state == 1: # important object detected
+        screen.fill('blue') 
+    elif globals.announce_state == 2: # danger object detected
+        screen.fill('red')
+    else: screen.fill(WHITE)  # Clear screen
     pygame.draw.rect(screen, color, square_rect)  # Draw green square
     screen.blit(text_surface, text_rect)  # Draw text on the screen
     pygame.display.flip()

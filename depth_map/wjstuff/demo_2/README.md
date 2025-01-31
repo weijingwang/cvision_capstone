@@ -1,16 +1,28 @@
 
-# First demo install tutorial
+# Second demo install tutorial
 
-![Project Diagram](demo.jpg)
+![Project Diagram](demo2.png)
 
-State chart of design
+Working of Demo2 (running at ~300ms per frame on my mac CPU only)
 
-Current demo has volume problem because the DepthAnything2 used here is not metric.
+The openCV webcam thing has **4 windows**:
+1) shows webcam with YOLO boxes and SAM
+2) shows depthAnythingV2 metric map
+3) shows SAM mask of target (if target selected)
+4) shows masked portion of depth for target (if target selected)
 
-- plays sine wave with panning based on detected person's x-location
-- realtime webcam ~2FPS on my mac
-- show non-metric depth map 
-- and yolo boxes
+The Pygame GUI:
+- Pressing the green button once will print all the detected objects. 
+- Holding and double clicking not implemented yet
+- background is normally white but turns **RED for DANGER**, and *blue for important object*
+
+**Terminal user input**:
+- enter 0 for main state
+- enter 1 for voice activation mode
+- **inside voice mode enter a COCO class to set as target**
+- *This will guide you towards target until you reach it*
+
+
 
 
 ## Setup
@@ -23,6 +35,10 @@ cd checkpoints
 
 cd ..
 ```
+
+If it doesn't work, manually download here and place it in checkpoints folder:
+
+https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-Hypersim-Small/resolve/main/depth_anything_v2_metric_hypersim_vits.pth?download=true
 
 
 ## Virtual Environment

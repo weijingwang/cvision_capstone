@@ -33,11 +33,14 @@ panning = 0.5      # Default panning (0.0 = left, 1.0 = right)
 sound = None
 depth_person = np.inf
 person_detected = False
-apple_detected = False
+danger_detected = False
 red_circle_position = 0 
 warning_sound = pygame.mixer.Sound('warning.ogg')
 warning_sound.set_volume(1)  # Set volume to 10%
 warning_channel = pygame.mixer.Channel(3)  # Use channel 0 for playing this sound
+danger_detected = False
+important_detected = False
+
 
 # Pygame GUI vars
 clock = pygame.time.Clock()
@@ -92,7 +95,9 @@ if __name__ == '__main__':
 
         # reset detection vars each loop
         person_detected = False
-        apple_detected = False
+        danger_detected = False
+        danger_detected = False
+        important_detected = False
 
         # Get new webcam frame
         ret, raw_frame = cap.read() #raw_frame is dtype uint8!!!
@@ -117,7 +122,7 @@ if __name__ == '__main__':
         # process the yolo stuff
         yolo_results = process_yolo_results(results, raw_frame, raw_depth, model.names)
         raw_frame, combined_mask, depth_person = yolo_results[0], yolo_results[1], yolo_results[2]
-        apple_detected, person_detected, red_circle_position = yolo_results[3], yolo_results[4] , yolo_results[5]
+        danger_detected, person_detected, red_circle_position = yolo_results[3], yolo_results[4] , yolo_results[5]
         x_center, y_center = yolo_results[6], yolo_results[7] 
         combined_mask_resized, combined_mask_for_show = process_SAM_mask(combined_mask)[0], process_SAM_mask(combined_mask)[1]
         depth_masked = combined_mask_resized * raw_depth
@@ -128,7 +133,7 @@ if __name__ == '__main__':
         depth_masked = get_plottable_depth(depth_masked, args, cmap)[0]
 
         # update sound based on camera input and processing
-        wave = update_sound(depth_person, red_circle_position, frequency, apple_detected)
+        wave = update_sound(depth_person, red_circle_position, frequency, danger_detected)
 
         # LOGIC
         # print(globals.objects_buffer)
@@ -136,25 +141,38 @@ if __name__ == '__main__':
         # print(objects_only)
         for element in objects_only:
             if element in DANGEROUS_OBJECTS:
-                print("DANGER:", element, "detected!!!")
+                # globals.announce_state = 2
+                danger_detected = True
+                # print("DANGER:", element, "detected!!!")
+            else: globals.announce_state = 0
         for element in objects_only:
             if element in IMPORTANT_OBJECTS:
-                print("IMPORTANT:", element, "detected!!!")
+                # if globals.announce_state != 2:
+                important_detected = True
+                # globals.announce_state = 2
+                # print("IMPORTANT:", element, "detected!!!")
+            else: globals.announce_state = 0
+
+        if danger_detected:
+            globals.announce_state = 2
+        else:
+            if important_detected:
+                globals.announce_state = 1
+            else:
+                globals.announce_state = 0
+
 
         # SOUND LOGIC
         #if there is a person on screen, play sound
         if person_detected:
-            if sound is None:
-                sound = pygame.sndarray.make_sound(wave)
-            else:
-                sound.stop()
-                sound = pygame.sndarray.make_sound(wave)
-            sound.play(loops=0)
+            play_sound(sound, wave)
             cv2.putText(depth, f'Pan: {panning:.2f}', (10, 200), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (255, 0, 255), 3, cv2.LINE_AA)
             cv2.putText(depth, f'Vol: {volume:.2f}', (10, 300), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (0, 255, 0), 3, cv2.LINE_AA)
             cv2.putText(depth, f'DepthPerson: {depth_person:.2f}', (10, 400), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (0, 0, 255), 3, cv2.LINE_AA)
             cv2.putText(depth_masked, f'Avg_dist {target_distance:.2f}', (x_center-10, y_center), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE-0.5, (255, 0, 255), 2, cv2.LINE_AA)
-        if apple_detected:
+        if danger_detected:
+            # print('bruh')
+            play_sound(sound, wave)
             if not warning_channel.get_busy():  # Check if the channel is not currently playing a sound
                 warning_channel.play(warning_sound)
         else:
@@ -181,7 +199,7 @@ if __name__ == '__main__':
         cycle_time = time.time() - cycle_start_time
         total_cycle_time += cycle_time
         frame_count += 1
-        print(f"Tot: {int(cycle_time*1000)}ms, YOLO: {int(inference_time*1000)}ms, Depth: {int(depth_time*1000)}ms, Other: {int((cycle_time-inference_time-depth_time)*1000)}ms")
+        # print(f"Tot: {int(cycle_time*1000)}ms, YOLO: {int(inference_time*1000)}ms, Depth: {int(depth_time*1000)}ms, Other: {int((cycle_time-inference_time-depth_time)*1000)}ms")
 
     # quit pygame stuff and in general
     quit_app()

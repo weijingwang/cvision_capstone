@@ -24,7 +24,7 @@ def process_yolo_results(results, raw_frame, raw_depth, names):
     # Initialize variables
     combined_mask = np.zeros(raw_frame.shape[:2], dtype=np.uint8)  # Same size as the frame
     objects = []
-    apple_detected = False
+    danger_detected = False
     person_detected = False
     red_circle_position = 0
     depth_person = np.inf  
@@ -71,10 +71,10 @@ def process_yolo_results(results, raw_frame, raw_depth, names):
                 cv2.putText(raw_frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
 
                 # Additional logic for specific objects
-                if class_name == "apple":
-                    apple_detected = True
+                if class_name in DANGEROUS_OBJECTS:
+                    danger_detected = True
 
-                if class_name == "cell phone":
+                if class_name == globals.voice_command:
                     # Get mask for the current person
                     mask = masks.xy[i]  # Polygon points for the mask
 
@@ -102,4 +102,4 @@ def process_yolo_results(results, raw_frame, raw_depth, names):
                     # Track the horizontal position of the red circle (panning position)
                     red_circle_position = x_center / raw_frame.shape[1]  # Normalize to [0, 1]
     globals.objects_buffer = objects
-    return raw_frame, combined_mask, depth_person, apple_detected, person_detected, red_circle_position, x_center, y_center
+    return raw_frame, combined_mask, depth_person, danger_detected, person_detected, red_circle_position, x_center, y_center

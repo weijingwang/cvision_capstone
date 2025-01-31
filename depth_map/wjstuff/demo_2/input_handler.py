@@ -39,13 +39,16 @@ def input_listener():  # Function to listen for specific key inputs
                 if user_input == '':
                     print('listing all the objects...')
                     print(globals.objects_buffer)
+                    globals.state = 0 #move someplace else later
                     
                 elif is_word_in_set(user_input, MODEL_NAMES):
                     globals.voice_command = user_input
-                    print(f'guiding you to {globals.voice_command} and then it finished')
+                    print(f'guiding you to {globals.voice_command}...')
                 else:
                     print("unknown object")
-                globals.state = 0 #move someplace else later
+                    globals.state = 0 #move someplace else later
+                    
+                
                 print('Enter 1 for voice activation:')
 
 

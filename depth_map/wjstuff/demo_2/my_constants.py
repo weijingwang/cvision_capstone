@@ -1,4 +1,5 @@
 """My constants"""
+ARRIVAL_METERS = 1
 WEBCAM_RESOLUTION = (640, 480)#(1280, 720)
 SAMPLE_RATE = 44100
 DURATION = 1  # Short buffer duration for real-time updates
