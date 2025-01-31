@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.patches as patches
 from ultralytics import YOLO
+import os
 
 
 
@@ -46,7 +47,7 @@ def plot_yolo_results(image_path, detections):
     ax.axis('off')
 
     # Show the plot
-    plt.show()
+    plt.show(block=False)
 
 
 def get_yolo_json(image_path):
@@ -81,15 +82,15 @@ def get_yolo_json(image_path):
         })
     
     # Plot the results
-    plot_yolo_results(image_path, detections)
+    # plot_yolo_results(image_path, detections)
 
     # Return the detections as JSON
     return json.dumps(detections)
 
 
-def plot_filtered_depth_map_with_bboxes(filtered_depth_map, filtered_objects, filtered_positions, filtered_distances, bboxes):
+def plot_filtered_depth_map_with_bboxes(filtered_depth_map, filtered_objects, filtered_positions, filtered_distances, bboxes, save_path):
     """
-    Plots the filtered depth map with bounding boxes overlaid for filtered objects.
+    Plots the filtered depth map with bounding boxes overlaid for filtered objects and saves the figure.
     """
     plt.figure(figsize=(12, 12))
     plt.imshow(filtered_depth_map, cmap='inferno')
@@ -110,7 +111,11 @@ def plot_filtered_depth_map_with_bboxes(filtered_depth_map, filtered_objects, fi
 
     plt.title("Filtered Depth Map with Bounding Boxes")
     plt.axis('off')
-    plt.show()
+
+    # Save the figure
+    plt.savefig(save_path)
+
+    plt.show(block=False)
 
 
 def plot_depth_map(depth_map, threshold=None):
@@ -126,7 +131,7 @@ def plot_depth_map(depth_map, threshold=None):
     plt.imshow(filtered_depth_map, cmap='inferno')
     plt.colorbar()
     plt.title("Filtered Depth Map")
-    plt.show()
+    plt.show(block=False)
 
 
 def get_depth_map(image_path, model, transform):
@@ -204,14 +209,10 @@ def filter_results(objects, distances, positions, distance_threshold, angle_thre
     return filtered_objects, filtered_distances, filtered_positions
 
 
-def get_oda(im_path: str, distance_threshold: float, normalized_angle_threshold: float, model, transform):
+def get_oda(im_path: str, distance_threshold: float, normalized_angle_threshold: float, model, transform, save_path: str):
     """
     Main function to get objects, distances, and angles based on depth and YOLO detections.
     """
-    # Display the image as a figure
-    plt.imshow(plt.imread(im_path))
-    plt.axis('off')
-    plt.show()
 
     # Get YOLO detections
     print("Getting YOLO detections...")
@@ -232,7 +233,7 @@ def get_oda(im_path: str, distance_threshold: float, normalized_angle_threshold:
     filtered_depth_map[depth >= distance_threshold] = 0
 
     # Plot the filtered depth map
-    plot_depth_map(filtered_depth_map, distance_threshold)
+    # plot_depth_map(filtered_depth_map, distance_threshold)
 
     # Specific depth for which we will see if there are any objects
     specific_depths = [1, 5, 10, 100]
@@ -263,6 +264,6 @@ def get_oda(im_path: str, distance_threshold: float, normalized_angle_threshold:
     filtered_objects, filtered_distances, filtered_positions = filter_results(objects, distances, angles, distance_threshold, normalized_angle_threshold)
 
     # Plot the filtered depth map with filtered bounding boxes
-    plot_filtered_depth_map_with_bboxes(filtered_depth_map, filtered_objects, filtered_positions, filtered_distances, result_bboxes)
+    plot_filtered_depth_map_with_bboxes(filtered_depth_map, filtered_objects, filtered_positions, filtered_distances, result_bboxes, save_path)
 
     return filtered_objects, filtered_distances, filtered_positions
