@@ -17,3 +17,10 @@ def generate_sound_wave(frequency, sample_rate, volume, panning, duration=0.1, s
     # Combine into stereo
     stereo_wave = np.column_stack((left, right))
     return (stereo_wave * 32767).astype(np.int16)
+
+# Inverse square law function for volume
+def calculate_volume(depth):
+    if depth <= 1: #1meter
+        return 1.0  # Max volume for distances <= 1 meter
+    else:
+        return min(1.0, 1.0 / (depth ** 2))  # Inverse square law for distances > 1 meter

@@ -12,8 +12,6 @@ Enter 1 to enter the voice activation state
 1/17/25 Demo Prototype ok. Depthmap and volume not working. Need to replace with depthpro maybe -wj
 """
 import time
-import cv2
-import matplotlib
 import pygame
 import threading
 from depth_map import *
@@ -22,6 +20,8 @@ from sound_gen import *
 from input_handler import *
 from my_constants import *
 import globals
+from webcam import *
+from gui import *
 pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=2)
 pygame.init()
 
@@ -30,7 +30,9 @@ frequency = 440.0  # Default frequency in Hz (A4)
 volume = MAX_SINE_VOLUME       # Default volume (0.0 to 1.0)
 panning = 0.5      # Default panning (0.0 = left, 1.0 = right)
 sound = None
+depth_person = np.inf
 person_detected = False
+apple_detected = False
 red_circle_position = 0 
 warning_sound = pygame.mixer.Sound('warning.ogg')
 warning_sound.set_volume(1)  # Set volume to 10%
@@ -50,18 +52,14 @@ last_click_time = 0
 is_double_clicked = False
 is_held = False  # Tracks if the button is being held
 
-# Inverse square law function for volume
-def calculate_volume(depth):
-    if depth <= 1: #1meter
-        return 1.0  # Max volume for distances <= 1 meter
-    else:
-        return min(1.0, 1.0 / (depth ** 2))  # Inverse square law for distances > 1 meter
 
+# Variables for timing
+total_cycle_time = 0
+total_inference_time = 0
+frame_count = 0
 
 def quit_app():
     pygame.quit()
-    cap.release()
-    cv2.destroyAllWindows()
     quit()
 
 if __name__ == '__main__':
@@ -70,7 +68,6 @@ if __name__ == '__main__':
     args = depth_init[0]
     depth_anything = depth_init[1]
     print("Loaded depthmap...")
-
 
     # Initialize YOLOv8
     model = init_objectDet()  # Use the appropriate YOLOv8 model variant (n, s, m, l, x)
@@ -81,116 +78,46 @@ if __name__ == '__main__':
     thread.start() # like interrupt, run key detection while loop in background
     print("Loaded threads...")
 
-
     # Initialize webcam
-    cmap = matplotlib.colormaps.get_cmap('gray')
-    cap = cv2.VideoCapture(WEBCAM_PATH) # webcam
-    if not cap.isOpened():
-        print("Error: Could not open webcam.")
-        exit()
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, WEBCAM_RESOLUTION[0])
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, WEBCAM_RESOLUTION[1])
-    frame_width, frame_height = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    frame_rate = int(cap.get(cv2.CAP_PROP_FPS))
-    if args.pred_only: 
-        output_width = frame_width
-    else: 
-        output_width = frame_width * 2 + MARGIN_WIDTH
+    webcam_data = webcam_init()
+    cap, cmap = webcam_data[0], webcam_data[1]
     print("Webcam started...")
     print("Fully Initialized")
 
-
-    # Variables for timing
-    total_cycle_time = 0
-    total_inference_time = 0
-    frame_count = 0
-    depth_person = np.inf
-
     #Program "Grand loop"
+    objects = []
     while cap.isOpened():
-        # Start timing the entire cycle
+        # start timing one loop
         cycle_start_time = time.time()
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                quit_app()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                if square_rect.collidepoint(event.pos):
-                    current_time = time.time()
-                    if current_time - last_click_time <= DOUBLE_CLICK_THRESHOLD:
-                        # print("double pressed")
-                        is_double_clicked = True
-                    # else:
-                    #     # print("pressed")
-                    last_click_time = current_time
-                    button_is_pressed = True
-                    is_held = True
-            elif event.type == pygame.MOUSEBUTTONUP:
-                if square_rect.collidepoint(event.pos):
-                    button_is_pressed = False
-                    is_held = False
-        if is_double_clicked:
-            print("LISTEN FOR VOICE INSTRUCTIONS")
-            is_double_clicked = False
-        if button_is_pressed:
-            print(f"{objects}")
-        color = DARK_GREEN if button_is_pressed else GREEN
-        screen.fill(WHITE)  # Clear screen
-        pygame.draw.rect(screen, color, square_rect)  # Draw green square
-        screen.blit(text_surface, text_rect)  # Draw text on the screen
-        pygame.display.flip()
-        # Limit FPS to 60
-        clock.tick(PYGAME_FPS)  # Returns the time passed since the last frame in milliseconds
-        pygame_fps = clock.get_fps()  # Get the current frames per second
-        # Update window title with FPS
-        pygame.display.set_caption(f"Your phone - FPS: {pygame_fps:.3f}")
-
-
+        # reset detection vars each loop
+        objects = []
         person_detected = False
         apple_detected = False
-        # Webcam variables
+
+        # Get new webcam frame
         ret, raw_frame = cap.read() #raw_frame is dtype uint8!!!
-        if not ret:
-            break
-
+        if not ret: break
         raw_frame = cv2.flip(raw_frame,1)
+        
+        # GUI handle events and render
+        button_is_pressed, is_held, is_double_clicked = handle_gui_events(square_rect)
+        render_gui(screen, square_rect, text_surface, text_rect, objects, button_is_pressed, is_double_clicked, clock)
 
-        # Run YOLOv8 inference on the frame
-        # Start timing the inference step
+        # YOLO inference and time it
         inference_start_time = time.time()
         results = model(raw_frame, verbose=False)
-        # End timing the inference step
         inference_time = time.time() - inference_start_time
-        total_inference_time += inference_time
 
+        # Depth map and time it
         depth_start_time = time.time()
-        # Depth math and get depth map to render
-        raw_depth = depth_anything.infer_image(raw_frame, args.input_size) #float32, same resolution as webcam
-        min_val = raw_depth.min()
-        max_val = raw_depth.max()
-        min_loc = np.unravel_index(np.argmin(raw_depth, axis=None), raw_depth.shape)
-        max_loc = np.unravel_index(np.argmax(raw_depth, axis=None), raw_depth.shape)
-        depth = (raw_depth - min_val) / (max_val - min_val) * 255.0
-        depth = depth.astype(np.uint8) #make the depth to show uint8 as well
-        if args.grayscale:
-            depth = np.repeat(depth[..., np.newaxis], 3, axis=-1)
-        else:
-            depth = (cmap(depth)[:, :, :3] * 255)[:, :, ::-1].astype(np.uint8)
-
-        cv2.putText(depth, f'Closest: {min_val:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 255), 2)
-        cv2.circle(depth, (min_loc[1], min_loc[0]), 5, (255, 0, 255), -1)  # Closest point
-        cv2.putText(depth, f'Closest', (min_loc[1], min_loc[0]), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 255), 2)
-
-        
-        cv2.putText(depth, f'Farthest: {max_val:.2f}', (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-        cv2.circle(depth, (max_loc[1], max_loc[0]), 5, (0, 0, 255), -1)  # Farthest point
-        cv2.putText(depth, f'Farthest', (max_loc[1], max_loc[0]), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+        depth_data = get_depth_map(raw_frame, depth_anything, args, cmap)
+        raw_depth, depth = depth_data[0], depth_data[1]
         depth_time = time.time() - depth_start_time
 
 
 
         # YOLO what do with each object detected
-        objects = []
         combined_mask = np.zeros(raw_frame.shape[:2], dtype=np.uint8)  # Same size as the frame        
         for result in results:
             masks = result.masks  # Segmentation masks
@@ -262,13 +189,6 @@ if __name__ == '__main__':
                         else:
                             print(f"Coordinates ({x}, {y}) are out of bounds for the depth map with shape {raw_depth.shape}.")
 
-                        # if depth_person >= 4:
-                        #     volume = MAX_SINE_VOLUME
-                        # elif depth_person <= 3:
-                        #     volume = 0.0
-                        # else:
-                        #     # Linear interpolation between 3 and 4
-                        #     volume = MAX_SINE_VOLUME * ((depth_person - 3) / (4 - 3))
                         volume = calculate_volume(depth_person)
                         # Draw a red circle at the center of the bounding box
                         cv2.circle(raw_frame, (x_center, y_center), radius=50, color=(0, 0, 255), thickness=-1)
@@ -279,107 +199,9 @@ if __name__ == '__main__':
 
         globals.objects_buffer = objects
 
-        # # At this point, combined_mask contains the combined mask for the "person" class
-        # Ensure the combined mask is not None
-        # Resize the combined mask
         combined_mask_resized = cv2.resize(combined_mask, (raw_frame.shape[1], raw_frame.shape[0]))
-
-        # Convert the combined mask to BGR for display
         combined_mask_for_show = cv2.cvtColor(combined_mask_resized*255, cv2.COLOR_GRAY2BGR)
         combined_mask_for_show = combined_mask_for_show.astype(np.uint8)
-
-        print(combined_mask.shape, combined_mask_resized.shape, combined_mask_for_show.shape)
-
-
-
-        # # Access masks directly from results[0].masks
-        # if hasattr(results[0], "masks") and results[0].masks is not None:
-        #     masks = results[0].masks.data  # Masks as binary numpy arrays
-        #     classes = results[0].boxes.cls  # Class indices for the masks
-        #     class_names = results[0].names  # Class name mapping (index to name)
-
-        #     combined_mask = None
-
-        #     # Combine masks only for "person" class
-        #     for mask, cls in zip(masks, classes):
-        #         if class_names[int(cls)] == "person":
-        #             mask = mask.cpu().numpy().astype(np.float32)  # Keep binary mask as 0s and 1s
-        #             if combined_mask is None:
-        #                 combined_mask = mask
-        #             else:
-        #                 combined_mask = cv2.bitwise_or(combined_mask, mask)
-
-        # # At this point, combined_mask contains the combined mask for the "person" class
-
-        # # Ensure the combined mask is not None
-        # if combined_mask is None:
-        #     combined_mask = np.zeros((raw_frame.shape[0], raw_frame.shape[1]), dtype=np.float32)
-
-        # # Resize the combined mask
-        # combined_mask_resized = cv2.resize(combined_mask, (raw_frame.shape[1], raw_frame.shape[0]))
-
-        # # Convert the combined mask to BGR for display
-        # combined_mask_for_show = cv2.cvtColor(combined_mask_resized*255, cv2.COLOR_GRAY2BGR)
-        # combined_mask_for_show = combined_mask_for_show.astype(np.uint8)
-
-        # print(combined_mask.shape, combined_mask_resized.shape, combined_mask_for_show.shape)
-
-        # for result in results:
-        #     masks = result.masks  # Extract masks
-        #     boxes = result.boxes  # Bounding boxes
-        #     names = model.names   # Class names
-
-        # for detection in results[0].boxes.data:
-        #     # YOLO save data for object
-        #     confidence = float(detection[4])  # Confidence score
-        #     x_min, y_min, x_max, y_max = map(float, detection[:4])  # Bounding box coordinates
-        #     class_id = int(detection[5])  # Class ID
-        #     objects.append((model.names[class_id], confidence))
-        #     label = f"{model.names[class_id]}: {confidence:.2f}"
-        #     # Draw the bounding box on the combined mask
-        #     cv2.rectangle(combined_mask_for_show, (int(x_min), int(y_min)), (int(x_max), int(y_max)), (0, 255, 0), 2)
-        #     cv2.putText(combined_mask_for_show, label, (int(x_min), int(y_min) - 10), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (0, 255, 0), 2)
-            
-
-
-        #     # LOGIC
-        #     if model.names[class_id] == "apple":
-        #         apple_detected = True
-
-        #     if model.names[class_id] == "person":
-        #         person_detected = True
-        #         x_center = int((x_min + x_max) / 2)
-        #         y_center = int((y_min + y_max) / 2)
-        #         # Infer depth map from the raw_frame
-        #         # Get the depth value at the specified location (100, 100)
-        #         x, y = x_center, y_center  # Coordinates of the pixel
-                
-        #         if 0 <= y < raw_depth.shape[0] and 0 <= x < raw_depth.shape[1]:  # Check bounds
-        #             depth_person = raw_depth[y, x]  # Access depth at (row=y, col=x)
-        #             # print(f"Depth value at ({x}, {y}): {depth_person}")
-        #         else:
-        #             print(f"Coordinates ({x}, {y}) are out of bounds for the depth map with shape {raw_depth.shape}.")
-
-        #         if depth_person >= 4:
-        #             volume = MAX_SINE_VOLUME
-        #         elif depth_person <= 3:
-        #             volume = 0.0
-        #         else:
-        #             # Linear interpolation between 3 and 4
-        #             volume = MAX_SINE_VOLUME * ((depth_person - 3) / (4 - 3))
-
-        #         # Draw a red circle at the center of the bounding box
-        #         cv2.circle(raw_frame, (x_center, y_center), radius=50, color=(0, 0, 255), thickness=-1)
-
-        #         # Track the horizontal position of the red circle (panning position)
-        #         red_circle_position = x_center / raw_frame.shape[1]  # Normalize to [0, 1]
-
-
-        # globals.objects_buffer = objects
-
-
-
-        # print(combined_mask_resized.shape, raw_depth.shape)
 
         depth_masked = combined_mask_resized * raw_depth
 
@@ -438,9 +260,6 @@ if __name__ == '__main__':
 
         if person_detected:
             cv2.putText(depth_masked, f'Avg_dist {average_non_zero:.2f}', (x_center-10, y_center), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE-0.5, (255, 0, 255), 2, cv2.LINE_AA)
-
-        # raw_frame = results[0].plot()
-        # print(raw_frame.dtype, combined_mask_for_show.dtype, depth.dtype, depth_masked.dtype)
 
         if args.pred_only:
             cv2.imshow('depth only ', depth)
