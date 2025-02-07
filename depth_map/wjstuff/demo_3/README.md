@@ -1,9 +1,11 @@
 
-# Second demo install tutorial
+# Third demo install tutorial
 
 ![Project Diagram](demo2.png)
 
-Working of Demo2 (running at ~300ms per frame on my mac CPU only)
+Working of Demo3 (running at ~300ms per frame on my mac CPU only/10FPS on GPU computer)
+
+*New feature: WIP tracking*
 
 The openCV webcam thing has **4 windows**:
 1) shows webcam with YOLO boxes and SAM
@@ -41,9 +43,15 @@ If it doesn't work, manually download here and place it in checkpoints folder:
 https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-Hypersim-Small/resolve/main/depth_anything_v2_metric_hypersim_vits.pth?download=true
 
 
-You will need to git clone both Depth-Anything-V2 (https://github.com/DepthAnything/Depth-Anything-V2?tab=readme-ov-file#pre-trained-models) and SORT (https://github.com/abewley/sort?tab=readme-ov-file)
+You will need to git clone both Depth-Anything-V2 (https://github.com/DepthAnything/Depth-Anything-V2) and SORT (https://github.com/abewley/sort)
 
-You will also need to rename the Depth-Anythin-V2 folder to DA2
+In the home directory:
+```
+git clone https://github.com/DepthAnything/Depth-Anything-V2
+git clone https://github.com/abewley/sort
+```
+
+You will also need to **rename the Depth-Anythin-V2 folder to DA2**
 
 
 ## Virtual Environment

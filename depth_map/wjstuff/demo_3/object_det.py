@@ -47,7 +47,7 @@ def process_yolo_results(results, raw_frame, raw_depth, names, tracker):
           - depth_obj (depth value for a specific object, if found),
           - danger_detected (boolean flag),
           - obj_detected (boolean flag for a specific object),
-          - red_circle_position (normalized horizontal position),
+          - x_angle (normalized horizontal position),
           - x_center, y_center (center coordinates for the specific object).
     """
 
@@ -56,10 +56,12 @@ def process_yolo_results(results, raw_frame, raw_depth, names, tracker):
     objects = []  # List to hold detected objects (class_name, confidence)
     danger_detected = False
     obj_detected = False
-    red_circle_position = 0
     depth_obj = np.inf  
     x_center = 0
     y_center = 0
+    # Variables for Will HRTF
+    x_angle = 0
+    y_angle = 0
 
     # List for SORT detections; each element is [x1, y1, x2, y2, confidence]
     sort_dets = []
@@ -134,7 +136,9 @@ def process_yolo_results(results, raw_frame, raw_depth, names, tracker):
                     cv2.circle(raw_frame, (x_center, y_center), radius=50, color=(0, 0, 255), thickness=-1)
 
                     # Track the horizontal position of the red circle (normalized)
-                    red_circle_position = x_center / raw_frame.shape[1]
+                    # Variables for will's HRTF
+                    x_angle = x_center / raw_frame.shape[1]
+                    y_angle = y_center / raw_frame.shape[0]
 
     # Convert SORT detections to a NumPy array (or an empty array if no detections)
     sort_dets = np.array(sort_dets) if len(sort_dets) > 0 else np.empty((0, 5))
@@ -152,4 +156,4 @@ def process_yolo_results(results, raw_frame, raw_depth, names, tracker):
     globals.objects_buffer = objects
 
     return (raw_frame, combined_mask, depth_obj, danger_detected, 
-            obj_detected, red_circle_position, x_center, y_center)
+            obj_detected, x_angle, y_angle, x_center, y_center)

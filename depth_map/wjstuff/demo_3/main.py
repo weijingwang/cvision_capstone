@@ -12,6 +12,8 @@ Enter 1 to enter the voice activation state
 1/17/25 Demo Prototype ok. Depthmap and volume not working. Need to replace with depthpro maybe -wj
 1/30/25 Refactored code
 """
+import soundfile as sf
+
 import time
 import pygame
 import threading
@@ -121,7 +123,7 @@ if __name__ == '__main__':
         depth_time = time.time() - depth_start_time
 
         # process the yolo stuff
-        raw_frame, combined_mask, depth_person, danger_detected, person_detected, red_circle_position, x_center, y_center = process_yolo_results(results, raw_frame, raw_depth, model.names, mot_tracker) 
+        raw_frame, combined_mask, depth_person, danger_detected, person_detected, x_angle, y_angle, x_center, y_center = process_yolo_results(results, raw_frame, raw_depth, model.names, mot_tracker) 
         combined_mask_resized, combined_mask_for_show = process_SAM_mask(combined_mask)
 
 
