@@ -12,6 +12,8 @@ Enter 1 to enter the voice activation state
 1/17/25 Demo Prototype ok. Depthmap and volume not working. Need to replace with depthpro maybe -wj
 1/30/25 Refactored code
 """
+import soundfile as sf
+
 import time
 import pygame
 import threading
@@ -23,6 +25,7 @@ from my_constants import *
 # import globals
 from webcam import *
 from gui import *
+from hrtf import *
 pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=2)
 pygame.init()
 
@@ -121,7 +124,7 @@ if __name__ == '__main__':
         depth_time = time.time() - depth_start_time
 
         # process the yolo stuff
-        raw_frame, combined_mask, depth_person, danger_detected, person_detected, red_circle_position, x_center, y_center = process_yolo_results(results, raw_frame, raw_depth, model.names, mot_tracker) 
+        raw_frame, combined_mask, depth_person, danger_detected, person_detected, x_angle, y_angle, x_center, y_center = process_yolo_results(results, raw_frame, raw_depth, model.names, mot_tracker) 
         combined_mask_resized, combined_mask_for_show = process_SAM_mask(combined_mask)
 
 
@@ -132,6 +135,14 @@ if __name__ == '__main__':
 
         depth_masked = get_plottable_depth(depth_masked, args, cmap)[0]
 
+
+        # HRTF stuff test
+        """
+        [WARNING!!!!] CHECKS HRFT EVERY TIME EVEN WHEN NOT TRACKING! WHEN NOT TRACKING, x_angle, y_angle = 0!!!!
+        """
+        hrtf_file, sound_is_flipped = get_HRTF_params(y_angle, x_angle, HRTF_DIR)
+        print(hrtf_file, sound_is_flipped, x_angle, y_angle)
+        
         # update sound based on camera input and processing
         wave = update_sound(depth_person, red_circle_position, frequency, danger_detected)
 
