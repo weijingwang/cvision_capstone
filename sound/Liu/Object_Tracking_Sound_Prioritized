@@ -1,0 +1,208 @@
+import numpy as np
+import json
+import os
+import glob
+import re
+import subprocess
+import tempfile
+import soundfile as sf
+from scipy import signal
+
+# Predefined categories with associated words
+categories = {
+    "Vehicles": ["car", "bike", "bus", "train", "plane", "ship"],
+    "Animals": ["dog", "cat", "bird"]
+}
+
+# Load GloVe embeddings into a dictionary
+def load_glove_embeddings(glove_file_path):
+    embeddings_dict = {}
+    with open(glove_file_path, 'r', encoding="utf-8") as f:
+        for line in f:
+            values = line.split()
+            word = values[0]
+            vector = np.array(values[1:], dtype='float32')
+            embeddings_dict[word] = vector
+    return embeddings_dict
+
+# Compute semantic similarity
+def compute_similarity(word1, word2, embeddings_dict):
+    if word1 in embeddings_dict and word2 in embeddings_dict:
+        vec1 = embeddings_dict[word1]
+        vec2 = embeddings_dict[word2]
+        return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+    return 0.0
+
+# Classify word into a category
+def classify_word(word, embeddings_dict, similarity_threshold=0.5):
+    for category, words in categories.items():
+        if word in words:
+            return category
+        for predefined_word in words:
+            similarity = compute_similarity(word, predefined_word, embeddings_dict)
+            if similarity >= similarity_threshold:
+                return category
+    return "Uncategorized"
+
+# Label objects as "urgent"
+def label_objects_with_urgency(objects, embeddings_dict):
+    labeled_objects = []
+    for obj in objects:
+        category = classify_word(obj, embeddings_dict)
+        is_urgent = category == "Vehicles"
+        labeled_objects.append({
+            "object": obj,
+            "urgent": is_urgent
+        })
+    return labeled_objects
+
+# Prioritize urgent objects
+def prioritize_objects(labeled_objects):
+    urgent_objects = [obj for obj in labeled_objects if obj["urgent"]]
+    non_urgent_objects = [obj for obj in labeled_objects if not obj["urgent"]]
+    return urgent_objects + non_urgent_objects
+
+# Get closest HRTF file
+def get_closest_hrtf_file(input_elevation, input_angle, base_dir):
+    elevation_pattern = r'elev(-?\d+)'
+    closest_elevation_folder = None
+    min_elevation_diff = float('inf')
+    
+    all_folders = glob.glob(os.path.join(base_dir, 'elev*/'))
+    all_folders.sort()
+    
+    for folder_path in all_folders:
+        folder_name = os.path.basename(folder_path.rstrip('/'))
+        elevation_match = re.search(elevation_pattern, folder_name)
+        
+        if elevation_match:
+            elevation = int(elevation_match.group(1))
+            elevation_diff = abs(input_elevation - elevation)
+            if elevation_diff < min_elevation_diff:
+                min_elevation_diff = elevation_diff
+                closest_elevation_folder = folder_path
+
+    if closest_elevation_folder is None:
+        print("No matching elevation folder found.")
+        return None
+
+    closest_file = None
+    min_angle_diff = float('inf')
+    
+    for file_path in glob.glob(os.path.join(closest_elevation_folder, '*.wav')):
+        file_name = os.path.basename(file_path)
+        angle_match = re.search(r'H(-?\d+)e(\d{3})a\.wav', file_name)
+        
+        if angle_match:
+            angle = int(angle_match.group(2)) 
+            angle_diff = abs(input_angle - angle)
+            if angle_diff < min_angle_diff:
+                min_angle_diff = angle_diff
+                closest_file = file_path
+
+    return closest_file
+
+# Process JSON input with urgency classification
+def process_json_with_urgency(input_file, base_dir, embeddings_dict):
+    with open(input_file, 'r') as file:
+        data = json.load(file)
+    objects = [item.get("object") for item in data]
+    distances = [item.get("distance") for item in data]
+    closest_files = []
+    is_flipped = []
+    targets = []
+
+    for item in data:
+        input_elevation = item.get("y_angle") * 90
+        input_angle = item.get("x_angle")
+        flip = input_angle > 0.5
+        adjusted_angle = 90 - (input_angle * 180) if not flip else ((input_angle - 0.5) * 180)
+        
+        closest_files.append(get_closest_hrtf_file(input_elevation, adjusted_angle, base_dir))
+        is_flipped.append(flip)
+        targets.append(item.get("target", False))
+
+    # Label objects with urgency
+    labeled_objects = label_objects_with_urgency(objects, embeddings_dict)
+
+    # Prioritize objects (urgent ones first)
+    prioritized_objects = prioritize_objects(labeled_objects)
+
+    return prioritized_objects, distances, closest_files, is_flipped, targets
+
+# Apply HRTF to the audio file
+def apply_hrtf(wav_file, hrtf_file, is_flipped, distance):
+    [HRIR, fs_H] = sf.read(hrtf_file)
+    [sig, fs_s] = sf.read(wav_file)
+
+    if len(sig.shape) > 1 and sig.shape[1] > 1:
+        sig_ = np.mean(sig, axis=1)
+    else:
+        sig_ = sig
+
+    s_L = signal.convolve(sig_, HRIR[:, 0] if not is_flipped else HRIR[:, 1], method='auto')
+    s_R = signal.convolve(sig_, HRIR[:, 1] if not is_flipped else HRIR[:, 0], method='auto')
+
+    scaling_factor = 1 / (distance ** 2) if distance > 0 else 1.0
+    s_L *= scaling_factor
+    s_R *= scaling_factor
+
+    Bin_Mix = np.vstack([s_L, s_R]).transpose()
+    sf.write(wav_file, Bin_Mix, fs_s)
+    
+    return wav_file
+
+# Generate and play audio with prioritization
+def generate_and_play_audio_with_piper(piper_path, model_path, temp_dir, tasks):
+    command = [piper_path, "--model", model_path, "--output_dir", str(temp_dir)]
+    
+    # Prioritize urgent objects
+    tasks.sort(key=lambda x: not x["urgent"])  
+
+    with subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True) as proc:
+        for task in tasks:
+            text_to_speak = task["text"]
+            closest_file = task["closest_file"]
+            is_flipped = task["is_flipped"]
+            distance = task["distance"]
+            is_target = task["is_target"]
+
+            if is_target:
+                radar_wav_path = os.path.join(temp_dir, "radar_temp.wav")
+                sf_data, sf_rate = sf.read(_RADAR_SOUND_FILE)
+                sf.write(radar_wav_path, sf_data, sf_rate)
+
+                num_loops_beep = 5 if task["urgent"] else 3
+                for _ in range(num_loops_beep):
+                    modified_radar_wav = apply_hrtf(radar_wav_path, closest_file, is_flipped, distance)
+                    subprocess.run(["aplay", "-D", "default", modified_radar_wav], check=True)
+                
+                os.unlink(radar_wav_path)
+            else:
+                print(text_to_speak, file=proc.stdin, flush=True)
+                wav_file = proc.stdout.readline().strip()
+                modified_wav = apply_hrtf(wav_file, closest_file, is_flipped, distance)
+                subprocess.run(["aplay", "-D", "default", modified_wav], check=True)
+                os.unlink(wav_file)
+
+# Main function
+def main(input_file, base_dir, piper_path, model_path, glove_file_path):
+    embeddings_dict = load_glove_embeddings(glove_file_path)
+    objects, distances, closest_files, is_flipped, targets = process_json_with_urgency(input_file, base_dir, embeddings_dict)
+
+    tasks = [
+        {"text": obj["object"], "closest_file": file, "is_flipped": flipped, "distance": dist, "is_target": is_target, "urgent": obj["urgent"]}
+        for obj, file, dist, flipped, is_target in zip(objects, closest_files, distances, is_flipped, targets)
+    ]
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        generate_and_play_audio_with_piper(piper_path, model_path, temp_dir, tasks)
+
+# Parameters
+_INPUT_FILE = 'your/path/testobjects.JSON'
+_HRTF_DIR = 'your/path/HRTF/MIT/diffuse'
+_PIPER_PATH = 'your/path/piper/piper'
+_MODEL_PATH = 'your/path/piper/en-us-ryan-high.onnx'
+_GLOVE_FILE_PATH = 'your/path/GloVe.6B.100d.txt'
+
+main(_INPUT_FILE, _HRTF_DIR, _PIPER_PATH, _MODEL_PATH, _GLOVE_FILE_PATH)
