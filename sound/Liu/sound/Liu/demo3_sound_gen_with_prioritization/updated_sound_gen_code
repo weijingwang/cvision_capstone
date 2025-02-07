@@ -7,7 +7,7 @@ import globals
 
 # -------------------- Load GloVe Embeddings --------------------
 embeddings_dict = {}
-glove_file_path = "C:\\Users\\Yubo Liu\\Downloads\\glove.6B\\glove.6B.100d.txt"
+glove_file_path = "your_path_to\\glove.6B\\glove.6B.100d.txt"
 with open(glove_file_path, 'r', encoding="utf-8") as f:
     for line in f:
         values = line.split()
