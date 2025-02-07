@@ -25,6 +25,7 @@ from my_constants import *
 # import globals
 from webcam import *
 from gui import *
+from hrtf import *
 pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=2)
 pygame.init()
 
@@ -134,6 +135,14 @@ if __name__ == '__main__':
 
         depth_masked = get_plottable_depth(depth_masked, args, cmap)[0]
 
+
+        # HRTF stuff test
+        """
+        [WARNING!!!!] CHECKS HRFT EVERY TIME EVEN WHEN NOT TRACKING! WHEN NOT TRACKING, x_angle, y_angle = 0!!!!
+        """
+        hrtf_file, sound_is_flipped = get_HRTF_params(y_angle, x_angle, HRTF_DIR)
+        print(hrtf_file, sound_is_flipped, x_angle, y_angle)
+        
         # update sound based on camera input and processing
         wave = update_sound(depth_person, red_circle_position, frequency, danger_detected)
 

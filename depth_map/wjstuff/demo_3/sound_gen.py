@@ -4,6 +4,7 @@ import numpy as np
 from scipy.signal import square
 from my_constants import *
 import globals
+
 def generate_sound_wave(frequency, sample_rate, volume, panning, duration=0.1, squarewave=False):
     """Generate a stereo sine wave with the given parameters."""
     t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)

@@ -35,7 +35,7 @@ SQUARE_Y = (SCREEN_HEIGHT - SQUARE_SIZE) // 2
 DOUBLE_CLICK_THRESHOLD = 0.3  # 300 ms for a double click
 
 # Will HRTF stuff
-_HRTF_DIR = "./HRTF/MIT/diffuse"
+HRTF_DIR = "./HRTF/MIT/diffuse"
 
 
 

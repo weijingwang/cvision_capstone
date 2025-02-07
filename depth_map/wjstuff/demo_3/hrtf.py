@@ -21,10 +21,10 @@ from scipy import signal
 #from IPython.display import Audio 
 
 
-BASE_DIR = Path(__file__).resolve().parent
+# BASE_DIR = Path(__file__).resolve().parent
 
 # _INPUT_FILE = (BASE_DIR / "testobjects.JSON").resolve()
-_HRTF_DIR = (BASE_DIR / "HRTF/MIT/diffuse").resolve()
+# _HRTF_DIR = (BASE_DIR / "HRTF/MIT/diffuse").resolve()
 # _XTTS2_PATH = "C:\\users\\swill\\anaconda3\\envs\\tts_env\\Scripts\\tts.exe"
 # _TTS_MODEL_PATH = 'tts_models/multilingual/multi-dataset/xtts_v2'
 # _VOICE_CLONE_FILE = (BASE_DIR / "sounds/sample_voice.wav").resolve()
@@ -107,39 +107,24 @@ def get_closest_hrtf_file(input_elevation, input_angle, base_dir):
 
 
 """
-[TODO]
-THE MAIN PROGRAM MUST SPIT OUT "DATA THAT THIS FUNCTION CAN READ
+Get HRTF file and flipped for one object 
+Original function from will: def process_json(input_file, base_dir)
+2/7/2025 -wj 
 """
-def process_object(data, base_dir): 
-    objects = []
-    distances = []
-    closest_files = []
-    is_flipped = []
-    targets = []
+def get_HRTF_params(input_elevation, input_angle, base_dir): 
+    input_elevation = input_elevation * 90 
 
-    for item in data: 
-        input_elevation = item.get("y_angle")
-        # Assuming elevation angle is between -1 and 1 (although lowest HRTF file is at -0.2)
-        input_elevation = input_elevation * 90 
-        # Assuming input azimuth angle is between 0 and 1
-        input_angle = item.get("x_angle") 
-        
-        # Angle input mapping to match get_closest_hrtf_file function
-        if (input_angle <= 0.5): 
-            flip = False
-            adjusted_angle = 90 - (input_angle * 180)
-        if (input_angle > 0.5):
-            flip = True
-            adjusted_angle = ((input_angle - 0.5) * 180)
-            
-        closest_files.append(get_closest_hrtf_file(input_elevation, adjusted_angle, base_dir))
-        # maybe add fallback here
-        objects.append(item.get("object"))
-        distances.append(item.get("distance"))
-        is_flipped.append(flip)
-        targets.append(item.get("target", False))
+    # Angle input mapping to match get_closest_hrtf_file function
+    if (input_angle <= 0.5): 
+        is_flipped = False
+        adjusted_angle = 90 - (input_angle * 180)
+    if (input_angle > 0.5):
+        is_flipped = True
+        adjusted_angle = ((input_angle - 0.5) * 180)
     
-    return objects, distances, closest_files, is_flipped, targets
+    closest_file = get_closest_hrtf_file(input_elevation, adjusted_angle, base_dir)
+
+    return closest_file, is_flipped
 
 
 
