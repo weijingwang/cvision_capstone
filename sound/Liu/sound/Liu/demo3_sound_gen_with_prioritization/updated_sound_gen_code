@@ -1,0 +1,122 @@
+import numpy as np
+import pygame
+import json
+from scipy.signal import square
+from my_constants import *
+import globals
+
+# -------------------- Load GloVe Embeddings --------------------
+embeddings_dict = {}
+glove_file_path = "C:\\Users\\Yubo Liu\\Downloads\\glove.6B\\glove.6B.100d.txt"
+with open(glove_file_path, 'r', encoding="utf-8") as f:
+    for line in f:
+        values = line.split()
+        word = values[0]
+        vector = np.array(values[1:], dtype='float32')
+        embeddings_dict[word] = vector
+
+# -------------------- Predefined Categories --------------------
+categories = {
+    "Vehicles": ["car", "bike", "bus", "train", "plane", "ship"],
+    "Animals": ["dog", "cat", "fish", "tiger", "bird"]
+}
+
+# -------------------- GloVe-Based Word Classification --------------------
+def compute_similarity(word1, word2):
+    """ Compute semantic similarity between two words using GloVe embeddings. """
+    if word1 in embeddings_dict and word2 in embeddings_dict:
+        vec1 = embeddings_dict[word1]
+        vec2 = embeddings_dict[word2]
+        return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+    return 0.0
+
+def classify_word(word, similarity_threshold=0.5):
+    """ Classify word into a category based on GloVe similarity. """
+    for category, words in categories.items():
+        if word in words:
+            return category
+        for predefined_word in words:
+            similarity = compute_similarity(word, predefined_word)
+            if similarity >= similarity_threshold:
+                return category
+    return "Uncategorized"
+
+def label_objects(input_objects):
+    """ Label detected objects as urgent (vehicles) or non-urgent. """
+    labeled_objects = []
+    for obj in input_objects:
+        object_name = obj["object"]
+        category = classify_word(object_name)
+        is_urgent = category == "Vehicles"
+        labeled_objects.append({
+            "object": object_name,
+            "distance": obj["distance"],
+            "angle": obj["angle"],
+            "urgent": is_urgent
+        })
+    return labeled_objects
+
+def rank_urgent_objects(labeled_objects):
+    """ Rank urgent objects by distance (closer ones first). """
+    urgent_objects = [obj for obj in labeled_objects if obj["urgent"]]
+    urgent_objects.sort(key=lambda obj: obj["distance"])
+    
+    processed_objects = [
+        {key: value for key, value in obj.items() if key != "urgent"}
+        for obj in urgent_objects
+    ]
+    return processed_objects
+
+# -------------------- Sound Generating --------------------
+def generate_sound_wave(frequency, sample_rate, volume, panning, duration=0.1, squarewave=False):
+    """ Generate a stereo sine wave for object sound output. """
+    t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
+    wave = square(2 * np.pi * frequency * t) * volume if squarewave else np.sin(2 * np.pi * frequency * t) * volume
+    left = wave * (1 - panning)
+    right = wave * panning
+    stereo_wave = np.column_stack((left, right))
+    return (stereo_wave * 32767).astype(np.int16)
+
+def calculate_volume(depth):
+    """ Calculate volume based on distance using inverse square law. """
+    if depth <= ARRIVAL_METERS:
+        globals.voice_command = ''
+        globals.arrived_at_target = True
+        globals.state = 0
+        return 1.0
+    return min(1.0, 1.0 / (depth ** 2))
+
+def update_sound(depth, red_circle_position, frequency, urgent):
+    """ Adjust sound characteristics based on urgency and object properties. """
+    volume = calculate_volume(depth)
+    panning = max(0.0, min(red_circle_position, 1.0))
+    wave = generate_sound_wave(frequency, SAMPLE_RATE, volume, panning, DURATION, squarewave=urgent)
+    return wave
+
+def play_sound(sound, wave):
+    """ Play sound using Pygame. Prioritize urgent objects first. """
+    if sound is None:
+        sound = pygame.sndarray.make_sound(wave)
+    else:
+        sound.stop()
+        sound = pygame.sndarray.make_sound(wave)
+    sound.play(loops=0)
+
+# -------------------- Main Sound Output Flow --------------------
+def process_and_play_sounds(detected_objects):
+    """
+    Process detected objects, prioritize urgent ones, and play sounds in order.
+    """
+    # Label and rank urgent objects
+    labeled_objects = label_objects(detected_objects)
+    prioritized_objects = rank_urgent_objects(labeled_objects)
+
+    for obj in prioritized_objects:
+        frequency = 440  # Adjust frequency based on object type if needed
+        depth = obj["distance"]
+        angle = obj["angle"]
+        urgent = obj.get("urgent", False)
+
+        # Generate and play sound
+        sound_wave = update_sound(depth, angle, frequency, urgent)
+        play_sound(None, sound_wave)  # Using None to initialize sound
