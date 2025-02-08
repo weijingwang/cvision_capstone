@@ -1,0 +1,56 @@
+"""
+object info structure
+id x :
+    classname
+    confidence
+    distance
+    x_angle
+    y_angle
+    played_sound_already = False
+"""
+
+object ID dissapears when: object ID dissapears from the objects list. OR the object classname changed even the ID is still there.
+
+
+interrupts {
+    user inputs {
+        select the thing you want to track
+    }
+}
+
+main loop {
+    get webcam frame
+
+    get depth map
+
+    object detect
+
+
+    # each object will have their own distance, x_angle and y_angle
+    for each object {
+        there is an object ID
+        get mask
+        distance of object = average (mask * depth)
+        x_angle, y_angle = position of object x , y
+    }
+
+    if tracking object { # TRACK OBJECT ID!!! PLAY TONE
+        generate and play the sound of the object you are tracking
+    }
+
+    if danger mode { #PLAY TONE
+        # [DECIDE IF PLAY ALL DANGERS AT ONCE OR PLAY MOST DANGEROUS ONLY]
+        play warning sound at location until object ID dissapear
+    }
+
+    if normal mode { #PLAY TTS
+        # Can either play all at once, or do YUBOs play in order.
+        play class name at location for all new IDs once.
+    }
+
+
+
+
+
+
+}
