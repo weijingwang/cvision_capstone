@@ -86,7 +86,6 @@ if __name__ == '__main__':
         globals.button_is_pressed, globals.is_held, globals.is_double_clicked = handle_gui_events(square_rect, globals.last_click_time)
         render_gui(screen, square_rect, text_surface, text_rect, globals.objects_buffer, globals.button_is_pressed, globals.is_double_clicked, clock)
 
-
         # Depth map and time it
         depth_start_time = time.time()
         raw_depth, depth_to_plot = get_depth_map(raw_frame, depth_anything, args, cmap)
@@ -94,11 +93,8 @@ if __name__ == '__main__':
 
         # YOLO inference and time it
         inference_start_time = time.time()
-        # results = model(raw_frame, verbose=False)
         results = model(raw_frame, verbose=False)[0] #, conf=0.25
-
         depth_to_plot = process_yolo_results(raw_frame, model, results, raw_depth, depth_to_plot, tracker)
-
         inference_time = time.time() - inference_start_time
 
 
@@ -127,84 +123,17 @@ if __name__ == '__main__':
     # sound test
         if globals.is_guiding:
             # Simulate some busy loop, and change the frequency based on a condition
-            target_sound_data[0] = (target_sound_data[0] + 10) % 1000  # Increase frequency by 10 Hz every loop
+            # target_sound_data[0] = (target_sound_data[0] + 10) % 1000  # Increase frequency by 10 Hz every loop
             target_sound_data[1] = min(1.0, 1.0 / (target_depth ** 2)) # depth to volume
             target_sound_data[2] = target_x_angle
             target_sound_data[3] = target_y_angle
             # print(f"Current Frequency: {target_sound_data[0]} Hz")
-            print(target_sound_data)
+            # print(target_sound_data)
             # Trigger the sine tone to play with the updated frequency
             frequency_event.set()
 
-        
-        # # combined_mask_resized, combined_mask_for_show = process_SAM_mask(combined_mask)
 
 
-        # # depth_masked = combined_mask_resized * raw_depth
-        
-        # # get the depth of your target object
-        # # target_distance = get_distance_of_object(depth_masked)
-
-        # # depth_masked = get_plottable_depth(depth_masked, args, cmap)[0]
-
-
-        # # HRTF stuff test
-        # """
-        # [WARNING!!!!] CHECKS HRFT EVERY TIME EVEN WHEN NOT TRACKING! WHEN NOT TRACKING, x_angle, y_angle = 0!!!!
-        # """
-        # # hrtf_file, sound_is_flipped = get_HRTF_params(y_angle, x_angle, HRTF_DIR)
-        # # print(hrtf_file, sound_is_flipped, x_angle, y_angle)
-        
-        # # update sound based on camera input and processing
-        # # wave = update_sound(depth_person, red_circle_position, frequency, danger_detected)
-
-        # # LOGIC
-        # # print(globals.objects_buffer)
-        # objects_only = [item[0] for item in globals.objects_buffer]
-        # # print(objects_only)
-        # for element in objects_only:
-        #     if element in DANGEROUS_OBJECTS:
-        #         # globals.announce_state = 2
-        #         danger_detected = True
-        #         # print("DANGER:", element, "detected!!!")
-        #     else: globals.announce_state = 0
-        # for element in objects_only:
-        #     if element in IMPORTANT_OBJECTS:
-        #         # if globals.announce_state != 2:
-        #         important_detected = True
-        #         # globals.announce_state = 2
-        #         # print("IMPORTANT:", element, "detected!!!")
-        #     else: globals.announce_state = 0
-
-        # if danger_detected:
-        #     globals.announce_state = 2
-        # else:
-        #     if important_detected:
-        #         globals.announce_state = 1
-        #     else:
-        #         globals.announce_state = 0
-
-        """
-        If tracking then play sound and the visuals on bottom row.
-        """
-
-
-        # # SOUND LOGIC
-        # #if there is a person on screen, play sound
-        # if person_detected:
-        #     play_sound(sound, wave)
-        #     cv2.putText(depth, f'Pan: {panning:.2f}', (10, 200), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (255, 0, 255), 3, cv2.LINE_AA)
-        #     cv2.putText(depth, f'Vol: {volume:.2f}', (10, 300), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (0, 255, 0), 3, cv2.LINE_AA)
-        #     cv2.putText(depth, f'DepthPerson: {depth_person:.2f}', (10, 400), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (0, 0, 255), 3, cv2.LINE_AA)
-        #     cv2.putText(depth_masked, f'Avg_dist {target_distance:.2f}', (x_center-10, y_center), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE-0.5, (255, 0, 255), 2, cv2.LINE_AA)
-        # if danger_detected:
-        #     # print('bruh')
-        #     play_sound(sound, wave)
-        #     if not warning_channel.get_busy():  # Check if the channel is not currently playing a sound
-        #         warning_channel.play(warning_sound)
-        # else:
-        #     if warning_channel.get_busy():  # Check if the channel is not currently playing a sound
-        #         warning_channel.fadeout(500)
 
             
         # End timing the entire cycle

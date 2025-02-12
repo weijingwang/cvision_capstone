@@ -116,10 +116,10 @@ def get_HRTF_params(input_elevation, input_angle, base_dir):
 
     # Angle input mapping to match get_closest_hrtf_file function
     if (input_angle <= 0.5): 
-        is_flipped = False
+        is_flipped = True
         adjusted_angle = 90 - (input_angle * 180)
     if (input_angle > 0.5):
-        is_flipped = True
+        is_flipped = False
         adjusted_angle = ((input_angle - 0.5) * 180)
     
     closest_file = get_closest_hrtf_file(input_elevation, adjusted_angle, base_dir)
@@ -128,46 +128,35 @@ def get_HRTF_params(input_elevation, input_angle, base_dir):
 
 
 
-# Maybe change to scipy.signal resample because it's faster, this is higher quality
-def fs_resample(s1,f1,s2,f2): 
+def fs_resample(s1, f1, s2, f2): 
     if f1 != f2:
         if f2 < f1:
-            s2 = librosa.core.resample(s2.transpose(),orig_sr=f2,target_sr=f1).T
-            s2 = s2.transpose
+            s2 = scipy.signal.resample(s2.transpose(), int(len(s2) * f1 / f2)).T
         else:
-            s1 = librosa.core.resample(s1.transpose(),orig_sr=f1,target_sr=f2).T
-            s1 = s1.transpose()
+            s1 = scipy.signal.resample(s1.transpose(), int(len(s1) * f2 / f1)).T
     fmax = max([f1, f2])
     f1 = fmax
     f2 = fmax
-    #print('Resampled at: ', fmax, 'Hz')
     return s1, f1, s2, f2
 
 
-def apply_hrtf(wav_file, hrtf_file, is_flipped, distance):
-    if hrtf_file is None:
-        raise ValueError("ERROR: `hrtf_file` is None. Check how it's assigned!")
+def apply_hrtf(signal_input, signal_fs, hrtf_input, hrtf_fs, is_flipped, distance):
+    if hrtf_input is None:
+        raise ValueError("ERROR: `hrtf_input` is None. Check how it's assigned!")
 
-    if not Path(hrtf_file).exists():
-        raise FileNotFoundError(f"ERROR: HRTF file does not exist at: {hrtf_file}")
-
-    print(f" Applying HRTF using file: {hrtf_file}")  # Debugging
-    [HRIR, fs_H] = sf.read(hrtf_file)
-    [sig_, fs_s] = sf.read(wav_file)
-    
-    if len(sig_.shape) > 1 and sig_.shape[1] > 1:  # Stereo audio
-        sig = np.mean(sig_, axis=1)  # Convert to mono by averaging channels
+    if len(signal_input.shape) > 1 and signal_input.shape[1] > 1:  # Stereo audio
+        sig = np.mean(signal_input, axis=1)  # Convert to mono by averaging channels
     else:  # Mono audio
-        sig = sig_
-    [sig, fs_s, HRIR, fs_H] = fs_resample(sig, fs_s, HRIR, fs_H)
-    # HRTF angle goes from 0 (head on) to 90 (right)
-    # so if angle is on left side, utilize symmetry and flip channels
+        sig = signal_input
+
+    [sig, signal_fs, hrtf_input, hrtf_fs] = fs_resample(sig, signal_fs, hrtf_input, hrtf_fs)
+
     if is_flipped == False: 
-        s_L = signal.convolve(sig,HRIR[:,0], method='auto')
-        s_R = signal.convolve(sig,HRIR[:,1], method='auto')
+        s_L = signal.convolve(sig, hrtf_input[:, 0], method='auto')
+        s_R = signal.convolve(sig, hrtf_input[:, 1], method='auto')
     else: 
-        s_L = signal.convolve(sig,HRIR[:,1], method='auto')
-        s_R = signal.convolve(sig,HRIR[:,0], method='auto')
+        s_L = signal.convolve(sig, hrtf_input[:, 1], method='auto')
+        s_R = signal.convolve(sig, hrtf_input[:, 0], method='auto')
         
     if distance > 0:
         scaling_factor = 1 / (distance**2)  # Inverse square law scaling
@@ -177,11 +166,9 @@ def apply_hrtf(wav_file, hrtf_file, is_flipped, distance):
     s_L *= scaling_factor
     s_R *= scaling_factor
     
-    Bin_Mix = np.vstack([s_L,s_R]).transpose()
+    Bin_Mix = np.vstack([s_L, s_R]).transpose()
     
-    sf.write(wav_file,Bin_Mix, fs_s)
-    
-    return wav_file
+    return Bin_Mix
 
 
 """
