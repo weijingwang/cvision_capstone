@@ -82,7 +82,7 @@ def add_performance_text(raw_frame, performance_text):
 
 def display_dict_info(frame, data_dict, position=(10, 30), font_scale=0.7, font_color=(0, 255, 0), font_thickness=2, excluding=[]):
     """
-    Displays the contents of a dictionary on an image/frame with numbers formatted to 2 decimal places.
+    Displays the contents of a dictionary on an image/frame with numbers formatted to 1 decimal places.
     :param frame: The image/frame on which to display the dictionary
     :param data_dict: The dictionary whose contents will be displayed
     :param position: The starting position for displaying the text (default is top-left corner)
@@ -93,7 +93,7 @@ def display_dict_info(frame, data_dict, position=(10, 30), font_scale=0.7, font_
     """
     def format_value(value):
         if isinstance(value, float):
-            return f"{value:.2f}"
+            return f"{value:.1f}"
         elif isinstance(value, dict):
             return {k: format_value(v) for k, v in value.items() if k not in excluding}
         elif isinstance(value, (list, tuple)):

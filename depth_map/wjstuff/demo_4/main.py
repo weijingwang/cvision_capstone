@@ -49,6 +49,16 @@ if __name__ == '__main__':
     thread.start() # like interrupt, run key detection while loop in background
     print("Loaded threads...")
 
+    """Simulates a busy main loop where the frequency changes based on some variable."""
+    target_sound_data = [440, 100, 0.5, 0.5]  # Start with 440 Hz (A4)
+    frequency_event = threading.Event()  # Event to trigger tone playback
+
+    # Start the sine tone thread
+    tone_thread = threading.Thread(target=play_sine_tone, args=(frequency_event, target_sound_data))
+    tone_thread.daemon = True  # Daemon thread will exit when the main program exits
+    tone_thread.start()
+
+
     # Initialize webcam
     webcam_data = webcam_init()
     cap, cmap = webcam_data[0], webcam_data[1]
@@ -97,7 +107,7 @@ if __name__ == '__main__':
         if globals.is_guiding:
             if globals.current_target_to_guide is not None and is_key_in_dict(globals.current_target_to_guide, globals.objects_data):
                 obj_data = globals.objects_data[globals.current_target_to_guide]
-                target_mask_vis,target_class_name, target_depth= obj_data['mask_vis'], obj_data['class'], obj_data['depth']
+                target_mask_vis,target_class_name, target_depth, target_x_angle, target_y_angle= obj_data['mask_vis'], obj_data['class'], obj_data['depth'], obj_data['x_angle'], obj_data['y_angle']
                 print('guiding...')
                 if target_depth < ARRIVAL_METERS:
                     globals.current_target_to_guide = None
@@ -114,6 +124,17 @@ if __name__ == '__main__':
 
 
             
+    # sound test
+        if globals.is_guiding:
+            # Simulate some busy loop, and change the frequency based on a condition
+            target_sound_data[0] = (target_sound_data[0] + 10) % 1000  # Increase frequency by 10 Hz every loop
+            target_sound_data[1] = min(1.0, 1.0 / (target_depth ** 2)) # depth to volume
+            target_sound_data[2] = target_x_angle
+            target_sound_data[3] = target_y_angle
+            # print(f"Current Frequency: {target_sound_data[0]} Hz")
+            print(target_sound_data)
+            # Trigger the sine tone to play with the updated frequency
+            frequency_event.set()
 
         
         # # combined_mask_resized, combined_mask_for_show = process_SAM_mask(combined_mask)
@@ -253,15 +274,13 @@ if __name__ == '__main__':
         # Break the loop on 'q' key press
         if (cv2.waitKey(1) & 0xFF == ord('q')) or globals.quit == True:
             print("quitting...")
+            print_logo()
             print_block_letter_art("Bye guys")
             if cap.isOpened():  # Check if the capture object is open
                 cap.release()  # Release the video capture
             quit_app()
-            # cap.release()
-            # cv2.destroyAllWindows()
 
-    # quit pygame stuff and in general
-    # quit_app()
+# end of program :)
 
 
 

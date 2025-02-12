@@ -99,7 +99,12 @@ def process_yolo_results(frame, model, results, raw_depth, depth_to_plot, tracke
     for i in range(len(detections)):
         # Get box coordinates
         box = detections.xyxy[i].astype(int)
-        
+
+        x1, y1, x2, y2 = map(int, box)  # Convert to integers
+        x_center, y_center = int((x1 + x2) / 2), int((y1 + y2) / 2)
+        x_angle = x_center / frame.shape[1]  # Normalize to [0, 1]
+        y_angle = y_center / frame.shape[0]  # Normalize to [0, 1]
+
         # Get tracking ID
         track_id = detections.tracker_id[i]
         if track_id is None:
@@ -141,7 +146,9 @@ def process_yolo_results(frame, model, results, raw_depth, depth_to_plot, tracke
             'depth': float(avg_depth),
             'sounded_already': False,  # Added initialization flag
             'confidence': float(confidence),
-            'mask_vis' : mask_vis
+            'mask_vis' : mask_vis,
+            'x_angle': float(x_angle),
+            'y_angle': float(y_angle)
         }
     
     return depth_to_plot
