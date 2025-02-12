@@ -5,7 +5,7 @@ state = 0
 voice_command = ''
 arrived_at_target = True
 objects_buffer = [] # going to be obsolete
-objects_data = [] #dictionary of IDs from tracking and all the parameters [describe later]
+objects_data = {} #dictionary of IDs from tracking and all the parameters [describe later]
 announce_state = 0 # 0 is no danger or important object. 1 is important. 2 is danger.
 
 # Demo variables

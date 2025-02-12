@@ -1,7 +1,7 @@
 """
 WJDEMO 4 heavy rewriting in progress 2/10/2025
 """
-import pygame, threading, time
+import pygame, threading, time, supervision
 # globals are imported in input_handler
 from depth_map import *
 from object_det import *
@@ -38,9 +38,9 @@ if __name__ == '__main__':
     model = init_objectDet()  # Use the appropriate YOLOv8 model variant (n, s, m, l, x)
     print("Loaded YOLO...")
 
-    # Initialize SORT
-    mot_tracker = init_sort()
-    print("Loaded SORT...")
+    # Initialize tracker
+    tracker = supervision.ByteTrack()
+    print("Loaded tracker")
 
     # Start the input listener thread
     thread = threading.Thread(target=input_listener, daemon=True)
@@ -71,18 +71,23 @@ if __name__ == '__main__':
         globals.button_is_pressed, globals.is_held, globals.is_double_clicked = handle_gui_events(square_rect, globals.last_click_time)
         render_gui(screen, square_rect, text_surface, text_rect, globals.objects_buffer, globals.button_is_pressed, globals.is_double_clicked, clock)
 
-        # YOLO inference and time it
-        inference_start_time = time.time()
-        results = model(raw_frame, verbose=False)
-        inference_time = time.time() - inference_start_time
 
         # Depth map and time it
         depth_start_time = time.time()
         raw_depth, depth_to_plot = get_depth_map(raw_frame, depth_anything, args, cmap)
         depth_time = time.time() - depth_start_time
 
-        # process the yolo stuff
-        raw_frame, objects_data = process_yolo_results(results, raw_frame, raw_depth, model.names, mot_tracker) 
+        # YOLO inference and time it
+        inference_start_time = time.time()
+        # results = model(raw_frame, verbose=False)
+        results = model(raw_frame, conf=0.25)[0]
+
+        depth_to_plot = process_yolo_results(raw_frame, model, results, raw_depth, depth_to_plot, tracker)
+
+        inference_time = time.time() - inference_start_time
+
+
+        
         # combined_mask_resized, combined_mask_for_show = process_SAM_mask(combined_mask)
 
 
@@ -168,10 +173,14 @@ if __name__ == '__main__':
         if cv2.waitKey(1) & 0xFF == ord('q'):
             cap.release()
             cv2.destroyAllWindows()
+
+            
         # End timing the entire cycle
         cycle_time = time.time() - cycle_start_time
         globals.total_cycle_time += cycle_time
-        # print(f"Tot: {int(cycle_time*1000)}ms, YOLO: {int(inference_time*1000)}ms, Depth: {int(depth_time*1000)}ms, Other: {int((cycle_time-inference_time-depth_time)*1000)}ms")
+
+
+        print(f"Tot: {int(cycle_time*1000)}ms, YOLO: {int(inference_time*1000)}ms, Depth: {int(depth_time*1000)}ms, Other: {int((cycle_time-inference_time-depth_time)*1000)}ms")
 
     # quit pygame stuff and in general
     quit_app()
