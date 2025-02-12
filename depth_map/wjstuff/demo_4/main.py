@@ -80,7 +80,7 @@ if __name__ == '__main__':
         # YOLO inference and time it
         inference_start_time = time.time()
         # results = model(raw_frame, verbose=False)
-        results = model(raw_frame, conf=0.25)[0]
+        results = model(raw_frame, verbose=False)[0] #, conf=0.25
 
         depth_to_plot = process_yolo_results(raw_frame, model, results, raw_depth, depth_to_plot, tracker)
 
@@ -88,52 +88,52 @@ if __name__ == '__main__':
 
 
         
-        # combined_mask_resized, combined_mask_for_show = process_SAM_mask(combined_mask)
+        # # combined_mask_resized, combined_mask_for_show = process_SAM_mask(combined_mask)
 
 
-        # depth_masked = combined_mask_resized * raw_depth
+        # # depth_masked = combined_mask_resized * raw_depth
         
-        # get the depth of your target object
-        # target_distance = get_distance_of_object(depth_masked)
+        # # get the depth of your target object
+        # # target_distance = get_distance_of_object(depth_masked)
 
-        # depth_masked = get_plottable_depth(depth_masked, args, cmap)[0]
+        # # depth_masked = get_plottable_depth(depth_masked, args, cmap)[0]
 
 
-        # HRTF stuff test
-        """
-        [WARNING!!!!] CHECKS HRFT EVERY TIME EVEN WHEN NOT TRACKING! WHEN NOT TRACKING, x_angle, y_angle = 0!!!!
-        """
-        # hrtf_file, sound_is_flipped = get_HRTF_params(y_angle, x_angle, HRTF_DIR)
-        # print(hrtf_file, sound_is_flipped, x_angle, y_angle)
+        # # HRTF stuff test
+        # """
+        # [WARNING!!!!] CHECKS HRFT EVERY TIME EVEN WHEN NOT TRACKING! WHEN NOT TRACKING, x_angle, y_angle = 0!!!!
+        # """
+        # # hrtf_file, sound_is_flipped = get_HRTF_params(y_angle, x_angle, HRTF_DIR)
+        # # print(hrtf_file, sound_is_flipped, x_angle, y_angle)
         
-        # update sound based on camera input and processing
-        # wave = update_sound(depth_person, red_circle_position, frequency, danger_detected)
+        # # update sound based on camera input and processing
+        # # wave = update_sound(depth_person, red_circle_position, frequency, danger_detected)
 
-        # LOGIC
-        # print(globals.objects_buffer)
-        objects_only = [item[0] for item in globals.objects_buffer]
-        # print(objects_only)
-        for element in objects_only:
-            if element in DANGEROUS_OBJECTS:
-                # globals.announce_state = 2
-                danger_detected = True
-                # print("DANGER:", element, "detected!!!")
-            else: globals.announce_state = 0
-        for element in objects_only:
-            if element in IMPORTANT_OBJECTS:
-                # if globals.announce_state != 2:
-                important_detected = True
-                # globals.announce_state = 2
-                # print("IMPORTANT:", element, "detected!!!")
-            else: globals.announce_state = 0
+        # # LOGIC
+        # # print(globals.objects_buffer)
+        # objects_only = [item[0] for item in globals.objects_buffer]
+        # # print(objects_only)
+        # for element in objects_only:
+        #     if element in DANGEROUS_OBJECTS:
+        #         # globals.announce_state = 2
+        #         danger_detected = True
+        #         # print("DANGER:", element, "detected!!!")
+        #     else: globals.announce_state = 0
+        # for element in objects_only:
+        #     if element in IMPORTANT_OBJECTS:
+        #         # if globals.announce_state != 2:
+        #         important_detected = True
+        #         # globals.announce_state = 2
+        #         # print("IMPORTANT:", element, "detected!!!")
+        #     else: globals.announce_state = 0
 
-        if danger_detected:
-            globals.announce_state = 2
-        else:
-            if important_detected:
-                globals.announce_state = 1
-            else:
-                globals.announce_state = 0
+        # if danger_detected:
+        #     globals.announce_state = 2
+        # else:
+        #     if important_detected:
+        #         globals.announce_state = 1
+        #     else:
+        #         globals.announce_state = 0
 
         """
         If tracking then play sound and the visuals on bottom row.
@@ -157,31 +157,41 @@ if __name__ == '__main__':
         #     if warning_channel.get_busy():  # Check if the channel is not currently playing a sound
         #         warning_channel.fadeout(500)
 
-
-        # Plotting
-        if args.pred_only:
-            cv2.imshow('depth only ', depth_to_plot)
-        else:
-            blank_image = np.zeros_like(raw_frame)
-            top_row_frame = cv2.hconcat([raw_frame, depth_to_plot])
-            # bottom_row_frame = cv2.hconcat([combined_mask_for_show, depth_masked])
-            # final_output = cv2.vconcat([top_row_frame, bottom_row_frame])
-            final_output = top_row_frame
-            cv2.imshow("wjdemo2", final_output)
-
-        # Break the loop on 'q' key press
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            cap.release()
-            cv2.destroyAllWindows()
-
             
         # End timing the entire cycle
         cycle_time = time.time() - cycle_start_time
         globals.total_cycle_time += cycle_time
 
 
-        print(f"Tot: {int(cycle_time*1000)}ms, YOLO: {int(inference_time*1000)}ms, Depth: {int(depth_time*1000)}ms, Other: {int((cycle_time-inference_time-depth_time)*1000)}ms")
 
+
+
+
+
+        performance_text = [
+            f"Tot: {int(cycle_time*1000)}ms",
+            f"YOLO: {int(inference_time*1000)}ms",
+            f"Depth: {int(depth_time*1000)}ms",
+            f"Other: {int((cycle_time-inference_time-depth_time)*1000)}ms"
+        ]
+        # print(f"Tot: {int(cycle_time*1000)}ms, YOLO: {int(inference_time*1000)}ms, Depth: {int(depth_time*1000)}ms, Other: {int((cycle_time-inference_time-depth_time)*1000)}ms")
+        raw_frame = add_performance_text(raw_frame, performance_text)
+
+        # Plotting
+        if args.pred_only:
+            cv2.imshow('depth only ', depth_to_plot)
+        else:
+            top_row_frame = cv2.hconcat([raw_frame, depth_to_plot])
+            # bottom_row_frame = cv2.hconcat([performance_image, performance_image])
+            # final_output = cv2.vconcat([top_row_frame, bottom_row_frame])
+            final_output = top_row_frame
+            cv2.imshow("wjdemo4", final_output)
+
+        # Break the loop on 'q' key press
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            cap.release()
+            cv2.destroyAllWindows()
+            
     # quit pygame stuff and in general
     quit_app()
 

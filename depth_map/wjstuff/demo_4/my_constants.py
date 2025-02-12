@@ -1,10 +1,12 @@
 """My constants"""
+
+
+
 ARRIVAL_METERS = 1
 WEBCAM_RESOLUTION = (640, 480)#(1280, 720)
 SAMPLE_RATE = 44100
 DURATION = 1  # Short buffer duration for real-time updates
 MARGIN_WIDTH = 50
-FONT_SCALE = 1.2  # Adjust this for desired text size
 MAX_SINE_VOLUME = 0.3
 WEBCAM_PATH = 0 #'apple_phone_low.mp4'
 # 'person_walk_test_HD.mp4'

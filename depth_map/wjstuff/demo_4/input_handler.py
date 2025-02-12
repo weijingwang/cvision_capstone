@@ -25,35 +25,39 @@ def input_listener():  # Function to listen for specific key inputs
     while True:
         try:
             user_input = input("").strip().lower()
-            if globals.state == 0:
+            if globals.state == 0:  # main state 0
                 if user_input == '0':
                     globals.state = 0
-                    print("main")
+                    print("you're in the main state 0!")
                 elif user_input == '1':
                     globals.state = 1
                     print("voice mode: enter class name to guide to")
-                elif user_input == '2':
-                    globals.state = 2
-                    print("safety mode")
+                # elif user_input == '2':
+                #     globals.state = 2
+                #     print("safety mode")
                 else:
                     print("Invalid key. Press '0' or '1'.")
 
-            elif globals.state == 1:
+            elif globals.state == 1: # waiting for input state 1
                 if user_input == '':
-                    print('listing all the objects...')
-                    print(globals.objects_buffer)
+                    print('listing all the objects... returning to main state 0!')
+                    # print(globals.objects_buffer)
                     globals.state = 0 #move someplace else later
                     
                 elif is_word_in_set(user_input, MODEL_NAMES):
                     globals.voice_command = user_input
-                    print(f'guiding you to {globals.voice_command}...')
+                    print(f'guiding you to {globals.voice_command}... (state 2)')
+                    globals.state = 2
                 else:
-                    print("unknown object")
-                    globals.state = 0 #move someplace else later
+                    print("unknown object - try again (state 1)")
+                    globals.state = 1 #move someplace else later
                     
                 
-                print('Enter 1 for voice activation:')
-
+            elif globals.state == 2: # wating for the guide to finish 2
+                # if done guiding == TRUE:
+                    # print('finished guiding you to target! returnung to mainstate 0!')
+                    # globals.state = 0
+                pass
 
 
         except Exception as e:
