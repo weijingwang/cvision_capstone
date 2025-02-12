@@ -9,6 +9,9 @@ def print_block_letter_art(text):
 def is_word_in_set(input_word, word_set):
     return input_word in word_set
 
+def is_key_in_dict(user_input, dictionary):
+    return user_input in dictionary
+
 def print_menu():
     menu = """
     ┌───────────────────────────────────┐

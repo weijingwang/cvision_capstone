@@ -93,6 +93,22 @@ if __name__ == '__main__':
 
         inference_time = time.time() - inference_start_time
 
+        if globals.is_guiding:
+            if globals.current_target_to_guide is not None and is_key_in_dict(globals.current_target_to_guide, globals.objects_data):
+                print('guiding...')
+            else:
+                print('lost!')
+                globals.is_guiding = False
+                
+                if globals.state == 2: # wating for the guide to finish 2
+                    if not globals.is_guiding:
+                        globals.current_target_to_guide = None
+                        globals.state = 0
+                        print_notification('finished guiding you to target! returnung to mainstate 0!')
+                        print_menu()
+
+
+            
 
         
         # # combined_mask_resized, combined_mask_for_show = process_SAM_mask(combined_mask)
@@ -177,6 +193,7 @@ if __name__ == '__main__':
 
 
         performance_text = [
+            f"FPS: {1/cycle_time:.2f}fps",
             f"Tot: {int(cycle_time*1000)}ms",
             f"YOLO: {int(inference_time*1000)}ms",
             f"Depth: {int(depth_time*1000)}ms",

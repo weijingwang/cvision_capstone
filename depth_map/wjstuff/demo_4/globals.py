@@ -7,6 +7,8 @@ arrived_at_target = True
 objects_buffer = [] # going to be obsolete
 objects_data = {} #dictionary of IDs from tracking and all the parameters [describe later]
 announce_state = 0 # 0 is no danger or important object. 1 is important. 2 is danger.
+is_guiding = False
+current_target_to_guide = None
 
 # Demo variables
 frequency = 440.0  # Default frequency in Hz (A4)

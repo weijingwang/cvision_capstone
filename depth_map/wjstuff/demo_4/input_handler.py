@@ -30,7 +30,7 @@ def input_listener():  # Function to listen for specific key inputs
                     print_notification("you're in the main state 0!")
                 elif user_input == '1':
                     globals.state = 1
-                    print_notification("voice mode: enter class name to guide to")
+                    print_notification("voice mode: enter ID to guide to")
                 # elif user_input == '2':
                 #     globals.state = 2
                 #     print("safety mode")
@@ -43,8 +43,10 @@ def input_listener():  # Function to listen for specific key inputs
                     # print(globals.objects_buffer)
                     globals.state = 0 #move someplace else later
                     
-                elif is_word_in_set(user_input, MODEL_NAMES):
+                elif is_key_in_dict(int(user_input), globals.objects_data):#is_word_in_set(user_input, MODEL_NAMES):
                     globals.voice_command = user_input
+                    globals.is_guiding = True
+                    globals.current_target_to_guide = int(user_input)
                     print_notification(f'guiding you to {globals.voice_command}... (state 2)')
                     globals.state = 2
                 else:
@@ -52,11 +54,7 @@ def input_listener():  # Function to listen for specific key inputs
                     globals.state = 1 #move someplace else later
                     
                 
-            elif globals.state == 2: # wating for the guide to finish 2
-                # if done guiding == TRUE:
-                    # print('finished guiding you to target! returnung to mainstate 0!')
-                    # globals.state = 0
-                pass
+                # state 2 is found in main.py because needs to be polled
 
 
         except Exception as e:
