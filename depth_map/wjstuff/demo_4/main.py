@@ -57,6 +57,11 @@ if __name__ == '__main__':
     tone_thread = threading.Thread(target=play_sine_tone, args=(frequency_event, target_sound_data))
     tone_thread.daemon = True  # Daemon thread will exit when the main program exits
     tone_thread.start()
+    print("Loaded targeting audio threat...")
+
+    MODEL_NAMES_AUDIO = create_audio_dictionary('classnames_audio')
+    data, samplerate = MODEL_NAMES_AUDIO['bowl']
+    print(data, samplerate)
 
 
     # Initialize webcam
@@ -97,6 +102,18 @@ if __name__ == '__main__':
         depth_to_plot = process_yolo_results(raw_frame, model, results, raw_depth, depth_to_plot, tracker)
         inference_time = time.time() - inference_start_time
 
+        for track_id, obj_data in globals.objects_data.items():
+            if not obj_data['sounded_already']:
+                print(f"ID: {track_id}, Class: {obj_data['class']}, Depth: {obj_data['depth']}, "
+                    f"Confidence: {obj_data['confidence']}, X Angle: {obj_data['x_angle']}, "
+                    f"Y Angle: {obj_data['y_angle']}")
+                
+                # Example usage:
+                audio_data, samplerate = MODEL_NAMES_AUDIO['bowl']
+                pygame_audio = convert_audio_format_to_pygame(audio_data, samplerate, SAMPLE_RATE)
+                sound = pygame.sndarray.make_sound(pygame_audio)
+                sound.play()
+                obj_data['sounded_already'] = True
 
 
         # Logic here could be simplified

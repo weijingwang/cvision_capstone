@@ -92,6 +92,12 @@ def process_yolo_results(frame, model, results, raw_depth, depth_to_plot, tracke
     if len(detections) > 0:
         detections = tracker.update_with_detections(detections)
     
+    # Store current sounded_already states before clearing
+    sounded_states = {
+        track_id: obj_data['sounded_already'] 
+        for track_id, obj_data in globals.objects_data.items()
+    }
+    
     # Clear previous objects info
     globals.objects_data.clear()
     
@@ -99,12 +105,11 @@ def process_yolo_results(frame, model, results, raw_depth, depth_to_plot, tracke
     for i in range(len(detections)):
         # Get box coordinates
         box = detections.xyxy[i].astype(int)
-
         x1, y1, x2, y2 = map(int, box)  # Convert to integers
         x_center, y_center = int((x1 + x2) / 2), int((y1 + y2) / 2)
         x_angle = x_center / frame.shape[1]  # Normalize to [0, 1]
         y_angle = y_center / frame.shape[0]  # Normalize to [0, 1]
-
+        
         # Get tracking ID
         track_id = detections.tracker_id[i]
         if track_id is None:
@@ -120,33 +125,32 @@ def process_yolo_results(frame, model, results, raw_depth, depth_to_plot, tracke
             mask = results.masks.data[i].cpu().numpy()
             # Calculate average depth for this object
             avg_depth = process_depth_mask(raw_depth, mask, frame.shape[:2])
-            
             # Create visualization mask
             mask_vis = cv2.resize(mask, (frame.shape[1], frame.shape[0]))
             mask_vis = (mask_vis > 0).astype(np.uint8)
-            
             # Draw mask
             colored_mask = np.zeros_like(frame)
             colored_mask[mask_vis > 0] = [0, 255, 0]  # Green mask
             depth_to_plot = cv2.addWeighted(depth_to_plot, 1, colored_mask, 0.5, 0)
         else:
             avg_depth = 0
-            
+            mask_vis = None
+        
         # Draw bounding box
         cv2.rectangle(depth_to_plot, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2)
         
         # Create label with depth
         label = f"{class_name} ({track_id}) {avg_depth:.2f}m"
         cv2.putText(depth_to_plot, label, (box[0], box[1] - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
         
-        # Store object information with sound_played_already flag
+        # Store object information, preserving sounded_already state if it exists
         globals.objects_data[track_id] = {
             'class': class_name,
             'depth': float(avg_depth),
-            'sounded_already': False,  # Added initialization flag
+            'sounded_already': sounded_states.get(track_id, False),  # Get previous state or False if new
             'confidence': float(confidence),
-            'mask_vis' : mask_vis,
+            'mask_vis': mask_vis,
             'x_angle': float(x_angle),
             'y_angle': float(y_angle)
         }

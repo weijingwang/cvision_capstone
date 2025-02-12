@@ -3,6 +3,83 @@ from my_constants import *
 import pyfiglet
 import pygame
 import sys
+import soundfile as sf
+import numpy as np
+from pathlib import Path
+import os
+
+import numpy as np
+from scipy import signal
+
+def convert_audio_format_to_pygame(audio_data, original_rate, target_rate):
+    """
+    Converts audio to 16-bit stereo at the specified sample rate.
+    
+    Args:
+        audio_data (np.ndarray): Input audio data
+        original_rate (int): Original sampling rate
+        target_rate (int): Desired sampling rate
+        
+    Returns:
+        np.ndarray: Resampled 16-bit stereo audio data
+    """
+    # Ensure input is a numpy array
+    audio_data = np.array(audio_data)
+    
+    # Resample if rates don't match
+    if original_rate != target_rate:
+        # Calculate number of samples needed
+        num_samples = int(len(audio_data) * target_rate / original_rate)
+        audio_data = signal.resample(audio_data, num_samples)
+    
+    # Convert to 16-bit range (-32768 to 32767)
+    if audio_data.dtype != np.int16:
+        # Normalize to [-1, 1] first if not already
+        if audio_data.max() > 1 or audio_data.min() < -1:
+            audio_data = audio_data / np.max(np.abs(audio_data))
+        # Convert to 16-bit
+        audio_data = (audio_data * 32767).astype(np.int16)
+    
+    # Convert to stereo if mono
+    if len(audio_data.shape) == 1:
+        audio_data = np.column_stack((audio_data, audio_data))
+    
+    return audio_data
+
+
+def load_sound_as_numpy(file_path):
+    data, samplerate = sf.read(file_path, dtype='int16')  # Read as 16-bit PCM
+    if len(data.shape) > 1:  # Convert stereo to mono if needed
+        data = np.mean(data, axis=1, dtype=np.int16)
+    return data, samplerate
+
+def create_audio_dictionary(folder_path):
+    """
+    Creates a dictionary of audio data from all .ogg files in the specified folder.
+    
+    Args:
+        folder_path (str): Path to the folder containing .ogg files
+        
+    Returns:
+        dict: Dictionary with filenames (without .ogg) as keys and tuples of (data, samplerate) as values
+    """
+    audio_dict = {}
+    folder = Path(folder_path)
+    
+    # Process all .ogg files in the folder
+    for file_path in folder.glob('*.ogg'):
+        # Get filename without extension
+        key = file_path.stem
+        
+        try:
+            # Load the audio data
+            data, samplerate = load_sound_as_numpy(file_path)
+            audio_dict[key] = (data, samplerate)
+        except Exception as e:
+            print(f"Error processing {file_path}: {str(e)}")
+    
+    return audio_dict
+
 
 def quit_app():
     cv2.destroyAllWindows()  # Close any OpenCV windows
