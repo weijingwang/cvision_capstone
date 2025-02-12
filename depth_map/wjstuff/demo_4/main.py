@@ -85,7 +85,7 @@ if __name__ == '__main__':
         # Get new webcam frame
         ret, raw_frame = cap.read() #raw_frame is dtype uint8!!!
         if not ret: break
-        raw_frame = cv2.flip(raw_frame,1)
+        # raw_frame = cv2.flip(raw_frame,1)
         
         # GUI handle events and render
         globals.button_is_pressed, globals.is_held, globals.is_double_clicked = handle_gui_events(square_rect, globals.last_click_time)
