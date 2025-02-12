@@ -109,9 +109,16 @@ if __name__ == '__main__':
                     f"Y Angle: {obj_data['y_angle']}")
                 
                 # Example usage:
-                audio_data, samplerate = MODEL_NAMES_AUDIO['bowl']
-                pygame_audio = convert_audio_format_to_pygame(audio_data, samplerate, SAMPLE_RATE)
+                audio_data, samplerate = MODEL_NAMES_AUDIO[obj_data['class'].strip().lower()]
+                audio_data = resample_audio(audio_data, samplerate, SAMPLE_RATE)
+                hrtf_file, sound_is_flipped = get_HRTF_params(obj_data['y_angle'], obj_data['x_angle'], HRTF_DIR)
+                hrtf_input, hrtf_fs = sf.read(hrtf_file)  # Use soundfile to read the HRTF WAV file
+                audio_data = apply_hrtf(audio_data, SAMPLE_RATE, hrtf_input, hrtf_fs, sound_is_flipped, distance=1)
+                audio_data *= min(1.0, 1.0 / (obj_data['depth'] ** 2))
+                pygame_audio = convert_audio_format_to_pygame(audio_data, SAMPLE_RATE, SAMPLE_RATE)
+                pygame_audio = np.ascontiguousarray(pygame_audio, dtype=np.int16)
                 sound = pygame.sndarray.make_sound(pygame_audio)
+                
                 sound.play()
                 obj_data['sounded_already'] = True
 

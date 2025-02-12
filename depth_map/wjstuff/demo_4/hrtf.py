@@ -131,9 +131,9 @@ def get_HRTF_params(input_elevation, input_angle, base_dir):
 def fs_resample(s1, f1, s2, f2): 
     if f1 != f2:
         if f2 < f1:
-            s2 = scipy.signal.resample(s2.transpose(), int(len(s2) * f1 / f2)).T
+            s2 = signal.resample(s2.transpose(), int(len(s2) * f1 / f2)).T
         else:
-            s1 = scipy.signal.resample(s1.transpose(), int(len(s1) * f2 / f1)).T
+            s1 = signal.resample(s1.transpose(), int(len(s1) * f2 / f1)).T
     fmax = max([f1, f2])
     f1 = fmax
     f2 = fmax

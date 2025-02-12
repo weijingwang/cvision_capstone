@@ -11,6 +11,36 @@ import os
 import numpy as np
 from scipy import signal
 
+
+import numpy as np
+from scipy import signal
+
+def resample_audio(audio_data, original_rate=8000, target_rate=44100):
+    """
+    Resamples audio data from one sample rate to another.
+    
+    Args:
+        audio_data (np.ndarray): Input audio data
+        original_rate (int): Original sampling rate (default: 8000)
+        target_rate (int): Target sampling rate (default: 44100)
+    
+    Returns:
+        np.ndarray: Resampled audio data
+    """
+    # Calculate the number of samples needed for the new sample rate
+    # new_samples = original_samples * (new_rate / old_rate)
+    num_samples = int(len(audio_data) * target_rate / original_rate)
+    
+    # Resample the audio data
+    resampled_audio = signal.resample(audio_data, num_samples)
+    
+    return resampled_audio
+
+# Example usage:
+# original_audio = np.array([...])  # Your 8000 Hz audio data
+# resampled_audio = resample_audio(original_audio)  # Converts to 44100 Hz
+
+
 def convert_audio_format_to_pygame(audio_data, original_rate, target_rate):
     """
     Converts audio to 16-bit stereo at the specified sample rate.

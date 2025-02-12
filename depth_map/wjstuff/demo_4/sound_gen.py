@@ -6,6 +6,8 @@ from my_constants import *
 import globals
 from hrtf import *
 
+
+
 def generate_sine_wave(frequency, duration, volume, x_angle, y_angle, sample_rate=44100):
     # HRTF stuff test
     hrtf_file, sound_is_flipped = get_HRTF_params(y_angle, x_angle, HRTF_DIR)
