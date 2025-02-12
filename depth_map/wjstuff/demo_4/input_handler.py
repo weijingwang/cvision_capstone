@@ -24,37 +24,40 @@ def input_listener():  # Function to listen for specific key inputs
     while True:
         try:
             user_input = input("").strip().lower()
-            if globals.state == 0:  # main state 0
-                if user_input == '0':
-                    globals.state = 0
-                    print_notification("you're in the main state 0!")
-                elif user_input == '1':
-                    globals.state = 1
-                    print_notification("voice mode: enter ID to guide to")
-                # elif user_input == '2':
-                #     globals.state = 2
-                #     print("safety mode")
-                else:
-                    print_notification("Invalid key. Press '0' or '1'.")
+            if user_input == 'quit':
+                globals.quit = True
+            if not globals.quit:
+                if globals.state == 0:  # main state 0
+                    if user_input == '0':
+                        globals.state = 0
+                        print_notification("you're in the main state 0!")
+                    elif user_input == '1':
+                        globals.state = 1
+                        print_notification("voice mode (state 1): enter ID to guide to")
+                    # elif user_input == '2':
+                    #     globals.state = 2
+                    #     print("safety mode")
+                    else:
+                        print_notification("Invalid key. Press '0' or '1'.")
 
-            elif globals.state == 1: # waiting for input state 1
-                if user_input == '':
-                    print_notification('listing all the objects... returning to main state 0!')
-                    # print(globals.objects_buffer)
-                    globals.state = 0 #move someplace else later
+                elif globals.state == 1: # waiting for input state 1
+                    if user_input == '':
+                        print_notification('listing all the objects... returning to main state 0!')
+                        # print(globals.objects_buffer)
+                        globals.state = 0 #move someplace else later
+                        
+                    elif is_key_in_dict(int(user_input), globals.objects_data):#is_word_in_set(user_input, MODEL_NAMES):
+                        globals.voice_command = user_input
+                        globals.is_guiding = True
+                        globals.current_target_to_guide = int(user_input)
+                        print_notification(f'guiding you to {globals.voice_command}... (state 2)')
+                        globals.state = 2
+                    else:
+                        print_notification("unknown object - try again (state 1)")
+                        globals.state = 1 #move someplace else later
+                        
                     
-                elif is_key_in_dict(int(user_input), globals.objects_data):#is_word_in_set(user_input, MODEL_NAMES):
-                    globals.voice_command = user_input
-                    globals.is_guiding = True
-                    globals.current_target_to_guide = int(user_input)
-                    print_notification(f'guiding you to {globals.voice_command}... (state 2)')
-                    globals.state = 2
-                else:
-                    print_notification("unknown object - try again (state 1)")
-                    globals.state = 1 #move someplace else later
-                    
-                
-                # state 2 is found in main.py because needs to be polled
+                    # state 2 is found in main.py because needs to be polled
 
 
         except Exception as e:

@@ -29,9 +29,7 @@ text_rect = text_surface.get_rect(center=square_rect.center)  # Center text on s
 
 
 
-def quit_app():
-    pygame.quit()
-    quit()
+
 
 if __name__ == '__main__':
     # Initialize depth map
@@ -93,19 +91,26 @@ if __name__ == '__main__':
 
         inference_time = time.time() - inference_start_time
 
+
+
+        # Logic here could be simplified
         if globals.is_guiding:
             if globals.current_target_to_guide is not None and is_key_in_dict(globals.current_target_to_guide, globals.objects_data):
+                obj_data = globals.objects_data[globals.current_target_to_guide]
+                target_mask_vis,target_class_name, target_depth= obj_data['mask_vis'], obj_data['class'], obj_data['depth']
                 print('guiding...')
+                if target_depth < ARRIVAL_METERS:
+                    globals.current_target_to_guide = None
             else:
                 print('lost!')
                 globals.is_guiding = False
                 
                 if globals.state == 2: # wating for the guide to finish 2
-                    if not globals.is_guiding:
-                        globals.current_target_to_guide = None
-                        globals.state = 0
-                        print_notification('finished guiding you to target! returnung to mainstate 0!')
-                        print_menu()
+                    # if not globals.is_guiding:
+                    globals.current_target_to_guide = None
+                    globals.state = 0
+                    print_notification('finished guiding you to target! returnung to mainstate 0!')
+                    print_menu()
 
 
             
@@ -185,11 +190,42 @@ if __name__ == '__main__':
         cycle_time = time.time() - cycle_start_time
         globals.total_cycle_time += cycle_time
 
+        blank_img = np.zeros_like(raw_frame)
 
+        if globals.is_guiding and globals.current_target_to_guide is not None:
+            # Get object info
+
+            # Create colored mask
+            colored_mask = np.zeros_like(raw_frame)
+            colored_mask[target_mask_vis > 0] = WHITE  # White mask
+            
+            # Find center of the mask
+            y_coords, x_coords = np.where(target_mask_vis > 0)
+            if len(x_coords) > 0 and len(y_coords) > 0:
+                center_x = int(np.mean(x_coords))
+                center_y = int(np.mean(y_coords))
+                
+                # Format text
+                text = f"{target_class_name} {target_depth:.2f}m"
+                
+                # Get text size for centering
+                (text_width, text_height), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
+                text_x = center_x - text_width // 2
+                text_y = center_y + text_height // 2
+                
+                # Draw text with background for better visibility
+                cv2.putText(colored_mask, text, (text_x, text_y),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 4)  # Thick black outline
+                cv2.putText(colored_mask, text, (text_x, text_y),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, WHITE, 2)  # White text
+            
+            # Combine with blank image
+            blank_img = cv2.addWeighted(blank_img, 1, colored_mask, 1, 0)
+            depth_to_plot = blank_img
 
         # Create a wider objects screen by doubling the width and half the height
         objects_screen = np.zeros((raw_frame.shape[0]//2, raw_frame.shape[1] * 2, 3), dtype=np.uint8)
-        display_dict_info(objects_screen, globals.objects_data)
+        display_dict_info(objects_screen, globals.objects_data, excluding = ['mask_vis'])
 
 
         performance_text = [
@@ -200,7 +236,7 @@ if __name__ == '__main__':
             f"Other: {int((cycle_time-inference_time-depth_time)*1000)}ms"
         ]
         raw_frame = add_performance_text(raw_frame, performance_text)
-
+        
         # Plotting
         if args.pred_only:
             cv2.imshow('depth only ', depth_to_plot)
@@ -215,12 +251,17 @@ if __name__ == '__main__':
             cv2.imshow("wjdemo4", final_output)
 
         # Break the loop on 'q' key press
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            cap.release()
-            cv2.destroyAllWindows()
+        if (cv2.waitKey(1) & 0xFF == ord('q')) or globals.quit == True:
+            print("quitting...")
+            print_block_letter_art("Bye guys")
+            if cap.isOpened():  # Check if the capture object is open
+                cap.release()  # Release the video capture
+            quit_app()
+            # cap.release()
+            # cv2.destroyAllWindows()
 
     # quit pygame stuff and in general
-    quit_app()
+    # quit_app()
 
 
 

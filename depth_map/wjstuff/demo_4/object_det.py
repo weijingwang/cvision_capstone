@@ -140,8 +140,8 @@ def process_yolo_results(frame, model, results, raw_depth, depth_to_plot, tracke
             'class': class_name,
             'depth': float(avg_depth),
             'sounded_already': False,  # Added initialization flag
-            'confidence': float(confidence)
-
+            'confidence': float(confidence),
+            'mask_vis' : mask_vis
         }
     
     return depth_to_plot

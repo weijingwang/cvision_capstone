@@ -1,6 +1,14 @@
 import cv2
 from my_constants import *
 import pyfiglet
+import pygame
+import sys
+
+def quit_app():
+    cv2.destroyAllWindows()  # Close any OpenCV windows
+    pygame.quit()  # Uninitialize Pygame
+    sys.exit()  # Exit the program
+
 
 def print_block_letter_art(text):
     ascii_art = pyfiglet.figlet_format(text)
@@ -72,7 +80,7 @@ def add_performance_text(raw_frame, performance_text):
 
     return raw_frame
 
-def display_dict_info(frame, data_dict, position=(10, 30), font_scale=0.7, font_color=(0, 255, 0), font_thickness=2):
+def display_dict_info(frame, data_dict, position=(10, 30), font_scale=0.7, font_color=(0, 255, 0), font_thickness=2, excluding=[]):
     """
     Displays the contents of a dictionary on an image/frame with numbers formatted to 2 decimal places.
     :param frame: The image/frame on which to display the dictionary
@@ -81,21 +89,24 @@ def display_dict_info(frame, data_dict, position=(10, 30), font_scale=0.7, font_
     :param font_scale: The scale of the text (default is 0.7)
     :param font_color: The color of the text (default is green)
     :param font_thickness: The thickness of the text (default is 2)
+    :param excluding: List of keys to exclude from display
     """
     def format_value(value):
         if isinstance(value, float):
             return f"{value:.2f}"
         elif isinstance(value, dict):
-            return {k: format_value(v) for k, v in value.items()}
+            return {k: format_value(v) for k, v in value.items() if k not in excluding}
         elif isinstance(value, (list, tuple)):
             return [format_value(v) for v in value]
         return value
 
-    # Format the dictionary with formatted numbers
-    formatted_dict = {key: format_value(value) for key, value in data_dict.items()}
+    # Filter out excluded keys and format the dictionary
+    filtered_dict = {key: format_value(value) 
+                    for key, value in data_dict.items() 
+                    if key not in excluding}
     
     # Format the dictionary content into a string to display
-    dict_info = "\n".join([f"{key}: {value}" for key, value in formatted_dict.items()])
+    dict_info = "\n".join([f"{key}: {value}" for key, value in filtered_dict.items()])
     
     # Split the string into lines for better formatting if it becomes too long
     lines = dict_info.split('\n')
