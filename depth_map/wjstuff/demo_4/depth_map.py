@@ -7,8 +7,7 @@ import numpy as np
 import cv2
 import argparse
 import torch
-from DA2.depth_anything_v2.dpt import DepthAnythingV2
-
+from DA2.metric_depth.depth_anything_v2.dpt import DepthAnythingV2
 
 def init_depth():
     parser = argparse.ArgumentParser(description='Depth Anything V2')
@@ -19,7 +18,7 @@ def init_depth():
     
     parser.add_argument('--encoder', type=str, default='vits', choices=['vits', 'vitb', 'vitl', 'vitg'])
     
-    parser.add_argument('--pred-only', dest='pred_only', action='store_true', default=False, help='only display the prediction')
+    parser.add_argument('--pred-only', dest='pred_only', action='store_true', help='only display the prediction')
     parser.add_argument('--grayscale', dest='grayscale', action='store_true', help='do not apply colorful palette')
     
     args = parser.parse_args()
@@ -33,37 +32,17 @@ def init_depth():
         'vitg': {'encoder': 'vitg', 'features': 384, 'out_channels': [1536, 1536, 1536, 1536]}
     }
     
-    encoder = 'vitl' # or 'vits', 'vitb', 'vitg'
-
     depth_anything = DepthAnythingV2(**model_configs[args.encoder])
-    # depth_anything.load_state_dict(torch.load(f'checkpoints/depth_anything_v2_metric_hypersim_{args.encoder}.pth', map_location='cpu'))
-    # depth_anything.load_state_dict(torch.load(f'checkpoints/depth_anything_v2_metric_hypersim_vits.pth', map_location=DEVICE))
-    depth_anything.load_state_dict(torch.load(f'checkpoints/depth_anything_v2_{args.encoder}.pth', map_location=DEVICE))
-
+    depth_anything.load_state_dict(torch.load(f'checkpoints/depth_anything_v2_metric_hypersim_{args.encoder}.pth', map_location='cpu'))
     depth_anything = depth_anything.to(DEVICE).eval()
 
     return args, depth_anything
 
-
 def get_plottable_depth(raw_depth, args, cmap):
-    h, w = raw_depth.shape
-    kernel_size = 5
-
-    # Reshape the image into non-overlapping 5x5 windows
-    H, W = h // kernel_size, w // kernel_size
-    depth_windows = raw_depth[:H * kernel_size, :W * kernel_size].reshape(H, kernel_size, W, kernel_size)
-    depth_windows = depth_windows.mean(axis=(1, 3))  # Compute the mean of each 5x5 region
-
-    # Find the locations of the minimum and maximum 5x5 block averages
-    min_idx = np.unravel_index(np.argmin(depth_windows, axis=None), depth_windows.shape)
-    max_idx = np.unravel_index(np.argmax(depth_windows, axis=None), depth_windows.shape)
-
-    # Convert block indices back to pixel coordinates (top-left corner of the 5x5 region)
-    min_loc = (min_idx[0] * kernel_size, min_idx[1] * kernel_size)
-    max_loc = (max_idx[0] * kernel_size, max_idx[1] * kernel_size)
-
-    # Compute overall min and max values for normalization
+    # Calculate min and max depth values and their locations
     min_val, max_val = raw_depth.min(), raw_depth.max()
+    min_loc = np.unravel_index(np.argmin(raw_depth, axis=None), raw_depth.shape)
+    max_loc = np.unravel_index(np.argmax(raw_depth, axis=None), raw_depth.shape)
 
     # Normalize depth map for rendering
     depth = ((raw_depth - min_val) / (max_val - min_val) * 255.0).astype(np.uint8)
@@ -75,10 +54,7 @@ def get_plottable_depth(raw_depth, args, cmap):
         if cmap is None:
             raise ValueError("A colormap must be provided if grayscale is False.")
         depth = (cmap(depth)[:, :, :3] * 255)[:, :, ::-1].astype(np.uint8)  # Apply colormap and convert to BGR
-
     return depth, min_val, min_loc, max_val, max_loc
-
-
 
 def get_distance_of_object(depth_masked): 
     # Step 1: Identify non-zero elements
@@ -99,17 +75,18 @@ def get_distance_of_object(depth_masked):
 
 def get_depth_map(raw_frame, depth_anything, args, cmap=None):
     # Infer depth map from the raw frame
-    raw_depth = depth_anything.infer_image(raw_frame)  # float32, same resolution as webcam
+    raw_depth = depth_anything.infer_image(raw_frame, args.input_size)  # float32, same resolution as webcam
 
-    depth, min_val, min_loc, max_val, max_loc = get_plottable_depth(raw_depth, args, cmap)
+    depth_info = get_plottable_depth(raw_depth, args, cmap)
+    depth, min_val, min_loc, max_val, max_loc = depth_info[0], depth_info[1], depth_info[2], depth_info[3], depth_info[4]
 
-    cv2.putText(depth, f'Furthest: {min_val:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 255), 2)
+    cv2.putText(depth, f'Closest: {min_val:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 255), 2)
     cv2.circle(depth, (min_loc[1], min_loc[0]), 5, (255, 0, 255), -1)  # Closest point
-    cv2.putText(depth, f'Furthest', (min_loc[1], min_loc[0]), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 255), 2)
+    cv2.putText(depth, f'Closest', (min_loc[1], min_loc[0]), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 255), 2)
 
-    cv2.putText(depth, f'Closest: {max_val:.2f}', (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+    cv2.putText(depth, f'Farthest: {max_val:.2f}', (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
     cv2.circle(depth, (max_loc[1], max_loc[0]), 5, (0, 0, 255), -1)  # Farthest point
-    cv2.putText(depth, f'Closest', (max_loc[1], max_loc[0]), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+    cv2.putText(depth, f'Farthest', (max_loc[1], max_loc[0]), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
-    return raw_depth, depth, min_val, max_val, min_loc, max_loc
+    return raw_depth, depth#, min_val, max_val, min_loc, max_loc
 

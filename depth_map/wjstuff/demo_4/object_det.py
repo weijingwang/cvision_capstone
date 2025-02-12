@@ -26,12 +26,35 @@ def process_SAM_mask(combined_mask):
     combined_mask_for_show = combined_mask_for_show.astype(np.uint8)
     return combined_mask_resized, combined_mask_for_show
 
+    # combined_mask_resized, combined_mask_for_show = process_SAM_mask(combined_mask)[0], process_SAM_mask(combined_mask)[1]
+    # depth_masked = combined_mask_resized * raw_depth
 
-def process_yolo_results(results, raw_frame, raw_depth, names, tracker):
+def calculate_iou(box1, box2):
+    """Calculate Intersection over Union between two bounding boxes"""
+    x1 = max(box1[0], box2[0])
+    y1 = max(box1[1], box2[1])
+    x2 = min(box1[2], box2[2])
+    y2 = min(box1[3], box2[3])
+    
+    intersection = max(0, x2 - x1) * max(0, y2 - y1)
+    area1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
+    area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
+    union = area1 + area2 - intersection
+    
+    return intersection / union if union > 0 else 0
+
+def get_distance_of_object(depth_masked): # input is a segment of depth map
+    # Step 1: Identify non-zero elements
+    non_zero_elements = depth_masked[depth_masked != 0]
+
+    # Step 2: Calculate the average of non-zero elements
+    average_non_zero = np.mean(non_zero_elements)
+    return average_non_zero
+
+def process_yolo_results(results, raw_frame, raw_depth, names, tracker, object_state=None):
     """
-    Processes YOLO detection results, overlays segmentation masks and bounding boxes,
-    computes additional information (like depth and danger detection), and integrates
-    the SORT tracker to assign consistent IDs to detected objects.
+    Processes YOLO detection results and returns a dictionary of tracked objects with their properties.
+    Uses YOLO's original detections for visualization while maintaining SORT tracking for ID consistency.
 
     Args:
         results: A list of detection results from the YOLO model.
@@ -39,121 +62,149 @@ def process_yolo_results(results, raw_frame, raw_depth, names, tracker):
         raw_depth: The depth map corresponding to raw_frame.
         names: A dictionary or list mapping class IDs to class names.
         tracker: An instance of the SORT tracker.
+        object_state: Dictionary tracking previous frame's objects. If None, initializes empty dict.
 
     Returns:
-        A tuple with:
-          - modified raw_frame (with overlays),
-          - combined binary mask,
-          - depth_obj (depth value for a specific object, if found),
-          - danger_detected (boolean flag),
-          - obj_detected (boolean flag for a specific object),
-          - x_angle (normalized horizontal position),
-          - x_center, y_center (center coordinates for the specific object).
+        Dictionary with object IDs as keys, containing object properties
     """
+    if object_state is None:
+        object_state = {}
 
-    # Initialize variables
-    combined_mask = np.zeros(raw_frame.shape[:2], dtype=np.uint8)  # Same size as the frame
-    objects = []  # List to hold detected objects (class_name, confidence)
-    danger_detected = False
-    obj_detected = False
-    depth_obj = np.inf  
-    x_center = 0
-    y_center = 0
-    # Variables for Will HRTF
-    x_angle = 0
-    y_angle = 0
-
-    # List for SORT detections; each element is [x1, y1, x2, y2, confidence]
-    sort_dets = []
-
-    # Process each detection result
+    objects = []
+    yolo_detections = []  # Store all YOLO detections
+    masks_dict = {}
+    
+    # First pass: Process and store all YOLO detections
     for result in results:
-        masks = result.masks  # Segmentation masks
-        boxes = result.boxes  # Bounding boxes
+        masks = result.masks
+        boxes = result.boxes
 
-        # Check if masks and boxes are available
         if masks is not None and boxes is not None:
-            # Iterate over each detected object
             for i in range(len(boxes)):
-                # Get bounding box coordinates in xyxy format
+                # Get original YOLO bounding box
                 bbox = boxes.xyxy[i].cpu().numpy()
-                x1, y1, x2, y2 = map(int, bbox)  # Convert to integers
-
-                # Get confidence score
+                x1, y1, x2, y2 = map(int, bbox)
                 confidence = boxes.conf[i].item()
-
-                # Get class ID and class name
                 class_id = int(boxes.cls[i])
                 class_name = names[class_id]
-                objects.append((class_name, confidence))
+                
+                # Store YOLO detection for tracking
+                yolo_detections.append([x1, y1, x2, y2, confidence])
 
-                # Add detection for SORT tracking
-                sort_dets.append([x1, y1, x2, y2, confidence])
-
-                # Draw bounding box on the raw frame (magenta)
-                cv2.rectangle(raw_frame, (x1, y1), (x2, y2), (255, 0, 255), 2)
-
-                # Draw mask overlay
-                mask_points = masks.xy[i].astype(int)  # Convert to integer coordinates
-                overlay = raw_frame.copy()
-                cv2.fillPoly(overlay, [mask_points], (255, 0, 255))
-                raw_frame = cv2.addWeighted(overlay, 0.3, raw_frame, 0.7, 0)
-
-                # Add label
-                label = f"{class_name} {confidence:.2f}"
-                cv2.putText(raw_frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX,
-                            0.9, (0, 255, 0), 2)
-
-                # Additional logic for specific objects
-                # (Assuming DANGEROUS_OBJECTS is defined globally)
-                if class_name in DANGEROUS_OBJECTS:
-                    danger_detected = True
-
-                # If the detected object matches the voice command
-                if class_name == globals.voice_command:
-                    # Get mask for the current person/object
-                    mask = masks.xy[i]  # Polygon points for the mask
-
-                    # Convert polygon points to a binary mask
-                    mask_pts = np.array(mask, dtype=np.int32)
+                # Create mask and get its bounding box
+                if masks is not None:
+                    mask_points = masks.xy[i].astype(int)
                     obj_mask = np.zeros(raw_frame.shape[:2], dtype=np.uint8)
-                    cv2.fillPoly(obj_mask, [mask_pts], 1)  # Fill polygon with 1s
+                    cv2.fillPoly(obj_mask, [mask_points], 1)
+                    
 
-                    # Combine with the global combined mask
-                    combined_mask = cv2.bitwise_or(combined_mask, obj_mask)
 
-                    obj_detected = True
-                    x_center = int((x1 + x2) / 2)
-                    y_center = int((y1 + y2) / 2)
+                    # Get the actual bounding box from the mask
+                    mask_indices = np.where(obj_mask > 0)
+                    if len(mask_indices[0]) > 0:  # If mask is not empty
+                        min_y, max_y = np.min(mask_indices[0]), np.max(mask_indices[0])
+                        min_x, max_x = np.min(mask_indices[1]), np.max(mask_indices[1])
+                        
+                        # Add padding to ensure full coverage (adjust padding as needed)
+                        padding = 5
+                        min_x = max(0, min_x - padding)
+                        min_y = max(0, min_y - padding)
+                        max_x = min(raw_frame.shape[1], max_x + padding)
+                        max_y = min(raw_frame.shape[0], max_y + padding)
+                        
+                        # Use the larger of YOLO bbox and mask bbox
+                        x1 = min(x1, min_x)
+                        y1 = min(y1, min_y)
+                        x2 = max(x2, max_x)
+                        y2 = max(y2, max_y)
+                
+                # Store detection data
+                masks_dict[i] = {
+                    'mask': obj_mask if masks is not None else None,
+                    'bbox': [x1, y1, x2, y2],
+                    'class_name': class_name,
+                    'confidence': confidence
+                }
 
-                    # Get depth value at the center of the bounding box
-                    if 0 <= y_center < raw_depth.shape[0] and 0 <= x_center < raw_depth.shape[1]:
-                        depth_obj = raw_depth[y_center, x_center]
-                    else:
-                        print(f"Coordinates ({x_center}, {y_center}) are out of bounds for the depth map.")
-
-                    # Draw a red circle at the center of the bounding box
-                    cv2.circle(raw_frame, (x_center, y_center), radius=50, color=(0, 0, 255), thickness=-1)
-
-                    # Track the horizontal position of the red circle (normalized)
-                    # Variables for will's HRTF
-                    x_angle = x_center / raw_frame.shape[1]
-                    y_angle = y_center / raw_frame.shape[0]
-
-    # Convert SORT detections to a NumPy array (or an empty array if no detections)
-    sort_dets = np.array(sort_dets) if len(sort_dets) > 0 else np.empty((0, 5))
+    # Update SORT tracker
+    yolo_detections = np.array(yolo_detections) if yolo_detections else np.empty((0, 5))
+    tracked_objects = tracker.update(yolo_detections)
     
-    # Update SORT tracker; it returns an array where each row is [x1, y1, x2, y2, object_id]
-    tracked_objects = tracker.update(sort_dets)
+    new_state = {}
+    
 
-    # Draw tracking information (red bounding boxes with IDs)
-    for d in tracked_objects:
-        tx1, ty1, tx2, ty2, obj_id = d.astype(int)
-        cv2.rectangle(raw_frame, (tx1, ty1), (tx2, ty2), (0, 0, 255), 2)
-        cv2.putText(raw_frame, f"ID {obj_id}", (tx1, ty1 - 10), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.9, (0, 0, 255), 2)
+
+    # Second pass: Match tracking IDs with detections
+    for track in tracked_objects:
+        obj_id = int(track[4])
+        track_bbox = track[:4]
+        
+        # Find best matching detection using IoU
+        best_iou = 0
+        best_match = None
+        
+        for det_idx, det_data in masks_dict.items():
+            iou = calculate_iou(track_bbox, det_data['bbox'])
+            if iou > best_iou:
+                best_iou = iou
+                best_match = det_data
+        
+        # If we found a good match
+        if best_match and best_iou > 0.3:
+            bbox = best_match['bbox']
+            x1, y1, x2, y2 = map(int, bbox)
+            
+            # Calculate center points
+            x_center = int((x1 + x2) / 2)
+            y_center = int((y1 + y2) / 2)
+            
+            # Calculate normalized positions
+            x_angle = x_center / raw_frame.shape[1]
+            y_angle = y_center / raw_frame.shape[0]
+            
+            # Get depth at center
+            # depth = raw_depth[y_center, x_center] if (0 <= y_center < raw_depth.shape[0] and 
+            #                                          0 <= x_center < raw_depth.shape[1]) else np.inf
+            obj_mask_processed, obj_mask_for_show = process_SAM_mask(obj_mask)
+            depth_masked = obj_mask_processed * raw_depth
+            depth = get_distance_of_object(depth_masked)
+
+            # Maintain temporal consistency
+            if obj_id in object_state:
+                prev_bbox = object_state[obj_id]['bbox']
+                # Apply slight smoothing to reduce jitter
+                smooth_factor = 0.8  # Adjust this value (0-1) to control smoothing
+                bbox = [
+                    int(smooth_factor * prev_bbox[0] + (1 - smooth_factor) * bbox[0]),
+                    int(smooth_factor * prev_bbox[1] + (1 - smooth_factor) * bbox[1]),
+                    int(smooth_factor * prev_bbox[2] + (1 - smooth_factor) * bbox[2]),
+                    int(smooth_factor * prev_bbox[3] + (1 - smooth_factor) * bbox[3])
+                ]
+            
+            # Determine if this is a new object
+            sound_played = object_state.get(obj_id, {}).get('sound_played', False)
+            
+            # Store object data
+            new_state[obj_id] = {
+                'mask': best_match['mask'],
+                'bbox': bbox,
+                'depth': depth,
+                'x_angle': x_angle,
+                'y_angle': y_angle,
+                'sound_played': sound_played,
+                'class_name': best_match['class_name'],
+                'confidence': best_match['confidence']
+            }
+            
+            # Draw the bounding box and label
+
+            
+            cv2.rectangle(raw_frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
+            label = f"ID {obj_id} {best_match['class_name']} {depth:.2f}m"
+            cv2.putText(raw_frame, label, 
+                       (int(bbox[0]), int(bbox[1]) - 10), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 
+                       0.9, (0, 255, 0), 2)
 
     globals.objects_buffer = objects
-
-    return (raw_frame, combined_mask, depth_obj, danger_detected, 
-            obj_detected, x_angle, y_angle, x_center, y_center)
+    return raw_frame, new_state
