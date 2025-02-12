@@ -41,6 +41,9 @@ def input_listener():  # Function to listen for specific key inputs
                         print_notification("Invalid key. Press '0' or '1'.")
 
                 elif globals.state == 1: # waiting for input state 1
+                    if user_input == '0':
+                        print_notification("cancelling... returning to main state 0!")
+
                     if user_input == '':
                         print_notification('listing all the objects... returning to main state 0!')
                         # print(globals.objects_buffer)
@@ -57,8 +60,13 @@ def input_listener():  # Function to listen for specific key inputs
                         globals.state = 1 #move someplace else later
                         
                     
-                    # state 2 is found in main.py because needs to be polled
-
+                # More state 2 is found in main.py because needs to be polled
+                elif globals.state == 2: # waiting for input state 1
+                    if user_input == '0':
+                        globals.state = 0
+                        globals.current_target_to_guide = None
+                        print_notification("cancelling... returning to main state 0!")
+                        print_menu()
 
         except Exception as e:
             print(f"Error: {e}")

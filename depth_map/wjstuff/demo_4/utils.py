@@ -27,6 +27,7 @@ def print_menu():
     ├───────────────────────────────────┤
     │ Enter 0 → Main State              │
     │ Enter 1 → Voice Activation        │
+    │ Enter quit → quit program         │
     └───────────────────────────────────┘
     """
     print(menu)
