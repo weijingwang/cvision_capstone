@@ -87,14 +87,14 @@ def get_distance_of_object(depth_masked): # input is a segment of depth map
 def process_yolo_results(frame, model, results, raw_depth, depth_to_plot, tracker):
     # Convert YOLO results to supervision Detections format
     detections = yolo_to_sv_detections(results)
-
+    
     # Update tracks
     if len(detections) > 0:
         detections = tracker.update_with_detections(detections)
-
+    
     # Clear previous objects info
     globals.objects_data.clear()
-
+    
     # Process each detection
     for i in range(len(detections)):
         # Get box coordinates
@@ -113,7 +113,6 @@ def process_yolo_results(frame, model, results, raw_depth, depth_to_plot, tracke
         # Get segmentation mask for this object
         if hasattr(results, 'masks') and results.masks is not None:
             mask = results.masks.data[i].cpu().numpy()
-            
             # Calculate average depth for this object
             avg_depth = process_depth_mask(raw_depth, mask, frame.shape[:2])
             
@@ -127,19 +126,22 @@ def process_yolo_results(frame, model, results, raw_depth, depth_to_plot, tracke
             depth_to_plot = cv2.addWeighted(depth_to_plot, 1, colored_mask, 0.5, 0)
         else:
             avg_depth = 0
-
+            
         # Draw bounding box
         cv2.rectangle(depth_to_plot, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2)
         
         # Create label with depth
         label = f"{class_name} ({track_id}) {avg_depth:.2f}m"
-        cv2.putText(depth_to_plot, label, (box[0], box[1] - 10), 
+        cv2.putText(depth_to_plot, label, (box[0], box[1] - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
         
-        # Store object information
+        # Store object information with sound_played_already flag
         globals.objects_data[track_id] = {
             'class': class_name,
-            'confidence': float(confidence),
-            'depth': float(avg_depth)
+            'depth': float(avg_depth),
+            'sounded_already': False,  # Added initialization flag
+            'confidence': float(confidence)
+
         }
+    
     return depth_to_plot

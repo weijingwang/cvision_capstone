@@ -1,8 +1,53 @@
 import cv2
 from my_constants import *
+import pyfiglet
+
+def print_block_letter_art(text):
+    ascii_art = pyfiglet.figlet_format(text)
+    print(ascii_art)
 
 def is_word_in_set(input_word, word_set):
     return input_word in word_set
+
+def print_menu():
+    menu = """
+    ┌───────────────────────────────────┐
+    │           MENU OPTIONS            │
+    ├───────────────────────────────────┤
+    │ Enter 0 → Main State              │
+    │ Enter 1 → Voice Activation        │
+    └───────────────────────────────────┘
+    """
+    print(menu)
+
+def print_logo():
+    logo = """@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ @@@@@@@@@@@@@@@
+@@@@@@.    @@@@@@@@   @@@@@@@@@@    @@@:   @@@@@@@
+@@@@@      @@@@@@      @@@@@@@@              @@@@@
+@@@@       @@@@@       @@@@@@@@@@@@          @@@@@
+@@@@                  @@@@@@@@@@@@@@@@@@@@  @@@@@@
+@@@                    @@@@@@@@@@@@@@@@@@@@@@@@@  
+@@           @@@@@@@@@     @@@@@@@@@@@@@@@@@@@  @@
+@          @@@@ @@@@@@@@      @@@@@@@@@@@@@@  @@@@
+@          @@   @@@@@  @@     @@@@@@@@@@@:   @@@@@
+@                @@@         @@@@@@@@@@@@@@@@@@@@@
+@                           @@@@@@@@@@@@@@@@@@@@@@
+@                             @@@@@@@@@@@@@@@@@@@@
+@                                %@@@@@@@@@@@@@@@@"""
+    print(logo)
+
+
+
+
+def print_notification(message):
+    border = "─" * (len(message) + 4)
+    notification = f"""
+    ┌{border}┐
+    │  {message}  │
+    └{border}┘
+    """
+    print(notification)
+
 
 
 def add_performance_text(raw_frame, performance_text):
@@ -23,3 +68,36 @@ def add_performance_text(raw_frame, performance_text):
         cv2.putText(raw_frame, line, (10, 30 + i * 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
     return raw_frame
+
+def display_dict_info(frame, data_dict, position=(10, 30), font_scale=0.7, font_color=(0, 255, 0), font_thickness=2):
+    """
+    Displays the contents of a dictionary on an image/frame with numbers formatted to 2 decimal places.
+    :param frame: The image/frame on which to display the dictionary
+    :param data_dict: The dictionary whose contents will be displayed
+    :param position: The starting position for displaying the text (default is top-left corner)
+    :param font_scale: The scale of the text (default is 0.7)
+    :param font_color: The color of the text (default is green)
+    :param font_thickness: The thickness of the text (default is 2)
+    """
+    def format_value(value):
+        if isinstance(value, float):
+            return f"{value:.2f}"
+        elif isinstance(value, dict):
+            return {k: format_value(v) for k, v in value.items()}
+        elif isinstance(value, (list, tuple)):
+            return [format_value(v) for v in value]
+        return value
+
+    # Format the dictionary with formatted numbers
+    formatted_dict = {key: format_value(value) for key, value in data_dict.items()}
+    
+    # Format the dictionary content into a string to display
+    dict_info = "\n".join([f"{key}: {value}" for key, value in formatted_dict.items()])
+    
+    # Split the string into lines for better formatting if it becomes too long
+    lines = dict_info.split('\n')
+    
+    # Draw each line of the dictionary on the frame
+    for i, line in enumerate(lines):
+        cv2.putText(frame, line, (position[0], position[1] + i * 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_color, font_thickness)

@@ -25,6 +25,10 @@ square_rect = pygame.Rect(SQUARE_X, SQUARE_Y, SQUARE_SIZE, SQUARE_SIZE)
 text_surface = font.render("PRESS", True, BLACK).convert_alpha()  # Render text
 text_rect = text_surface.get_rect(center=square_rect.center)  # Center text on square
 
+
+
+
+
 def quit_app():
     pygame.quit()
     quit()
@@ -51,8 +55,11 @@ if __name__ == '__main__':
     webcam_data = webcam_init()
     cap, cmap = webcam_data[0], webcam_data[1]
     print("Webcam started...")
-    print("Fully Initialized")
-
+    print("Fully Initialized")  
+    print_logo()
+    print_block_letter_art("CviSion")
+    print_menu()
+    
     #Program "Grand loop"
     while cap.isOpened():
         # start timing one loop
@@ -164,8 +171,9 @@ if __name__ == '__main__':
 
 
 
-
-
+        # Create a wider objects screen by doubling the width and half the height
+        objects_screen = np.zeros((raw_frame.shape[0]//2, raw_frame.shape[1] * 2, 3), dtype=np.uint8)
+        display_dict_info(objects_screen, globals.objects_data)
 
 
         performance_text = [
@@ -174,24 +182,26 @@ if __name__ == '__main__':
             f"Depth: {int(depth_time*1000)}ms",
             f"Other: {int((cycle_time-inference_time-depth_time)*1000)}ms"
         ]
-        # print(f"Tot: {int(cycle_time*1000)}ms, YOLO: {int(inference_time*1000)}ms, Depth: {int(depth_time*1000)}ms, Other: {int((cycle_time-inference_time-depth_time)*1000)}ms")
         raw_frame = add_performance_text(raw_frame, performance_text)
 
         # Plotting
         if args.pred_only:
             cv2.imshow('depth only ', depth_to_plot)
         else:
+            # Create the top row by concatenating raw frame and depth plot
             top_row_frame = cv2.hconcat([raw_frame, depth_to_plot])
-            # bottom_row_frame = cv2.hconcat([performance_image, performance_image])
-            # final_output = cv2.vconcat([top_row_frame, bottom_row_frame])
-            final_output = top_row_frame
+            
+            # Bottom row is just the single wide objects screen
+            bottom_row_frame = objects_screen  # No need to concatenate with itself anymore
+            
+            final_output = cv2.vconcat([top_row_frame, bottom_row_frame])
             cv2.imshow("wjdemo4", final_output)
 
         # Break the loop on 'q' key press
         if cv2.waitKey(1) & 0xFF == ord('q'):
             cap.release()
             cv2.destroyAllWindows()
-            
+
     # quit pygame stuff and in general
     quit_app()
 

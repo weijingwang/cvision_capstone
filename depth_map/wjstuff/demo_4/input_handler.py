@@ -20,7 +20,6 @@ def input_listener():  # Function to listen for specific key inputs
     # state = 0
     # voice_command = ''
     # objects_buffer = []
-    print('Enter 1 for voice activation:')
 
     while True:
         try:
@@ -28,28 +27,28 @@ def input_listener():  # Function to listen for specific key inputs
             if globals.state == 0:  # main state 0
                 if user_input == '0':
                     globals.state = 0
-                    print("you're in the main state 0!")
+                    print_notification("you're in the main state 0!")
                 elif user_input == '1':
                     globals.state = 1
-                    print("voice mode: enter class name to guide to")
+                    print_notification("voice mode: enter class name to guide to")
                 # elif user_input == '2':
                 #     globals.state = 2
                 #     print("safety mode")
                 else:
-                    print("Invalid key. Press '0' or '1'.")
+                    print_notification("Invalid key. Press '0' or '1'.")
 
             elif globals.state == 1: # waiting for input state 1
                 if user_input == '':
-                    print('listing all the objects... returning to main state 0!')
+                    print_notification('listing all the objects... returning to main state 0!')
                     # print(globals.objects_buffer)
                     globals.state = 0 #move someplace else later
                     
                 elif is_word_in_set(user_input, MODEL_NAMES):
                     globals.voice_command = user_input
-                    print(f'guiding you to {globals.voice_command}... (state 2)')
+                    print_notification(f'guiding you to {globals.voice_command}... (state 2)')
                     globals.state = 2
                 else:
-                    print("unknown object - try again (state 1)")
+                    print_notification("unknown object - try again (state 1)")
                     globals.state = 1 #move someplace else later
                     
                 

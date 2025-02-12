@@ -41,3 +41,6 @@ HRTF_DIR = "./HRTF/MIT/diffuse"
 
 
 
+
+# ASCII characters from dark to light
+ASCII_CHARS = "@%#*+=-:. "
