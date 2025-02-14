@@ -1,27 +1,33 @@
+# Fourth Demo Install Tutorial 
 
-# Third demo install tutorial
+<table>
+<tr>
+<td>
 
-![Project Diagram](demo2.png)
+This is the fourth demo for our CAPSTONE project **CViSion**. CViSion is an audio guide for the visually impaired that uses AI object detection, depth maps, and other modules to process video input. Based on the detections, spatial audio is generated for the user through headphones.
 
-Working of Demo3 (running at ~300ms per frame on my mac CPU only/10FPS on GPU computer)
+</td>
+<td>
+<img src="logo6.png" alt="Logo" width="400">
+Fig 1. CViSion Logo
+</td>
+</tr>
+</table>
 
-*New feature: WIP tracking*
+![Project Diagram](demo4.png)
 
-The openCV webcam thing has **4 windows**:
-1) shows webcam with YOLO boxes and SAM
-2) shows depthAnythingV2 metric map
-3) shows SAM mask of target (if target selected)
-4) shows masked portion of depth for target (if target selected)
+Fig 2. Demo4 Normal mode (running at 3fps on my Mac CPU only. ~10FPS on GPU computer)
 
-The Pygame GUI:
-- Pressing the green button once will print all the detected objects. 
-- Holding and double clicking not implemented yet
-- background is normally white but turns **RED for DANGER**, and *blue for important object*
+- There are two current modes in this demo.
+- There is a normal mode that announces all new objects that appear on the screen with spatial audio.
+- There is also a tracking mode that will play a tone to guide you towards that object until 1 meter away.
+- Finally, there is a WIP pygame GUI that is non-functional in this demo.
+- *The danger mode is not implemented yet*
 
 **Terminal user input**:
 - enter 0 for main state
 - enter 1 for voice activation mode
-- **inside voice mode enter a COCO class to set as target**
+- **inside voice mode enter an object ID to set as target**
 - *This will guide you towards target until you reach it*
 
 
@@ -43,20 +49,20 @@ If it doesn't work, manually download here and place it in checkpoints folder:
 https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-Hypersim-Small/resolve/main/depth_anything_v2_metric_hypersim_vits.pth?download=true
 
 
-You will need to git clone both Depth-Anything-V2 (https://github.com/DepthAnything/Depth-Anything-V2) and SORT (https://github.com/abewley/sort)
+<!-- You will need to git clone both Depth-Anything-V2 (https://github.com/DepthAnything/Depth-Anything-V2) and SORT (https://github.com/abewley/sort) -->
 
-In the home directory:
+In the main directory:
 ```
 git clone https://github.com/DepthAnything/Depth-Anything-V2
-git clone https://github.com/abewley/sort
 ```
+<!-- git clone https://github.com/abewley/sort -->
 
-You will also need to **rename the Depth-Anythin-V2 folder to DA2**
+You will also need to **rename the depth_anything_v2 folder to DA2**
 
 
 ## Virtual Environment
 
-Then setup virutal environment
+Then setup virtual environment
 
 ```bash 
 conda create -n wjdemo python=3.11 -y
