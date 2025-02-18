@@ -38,7 +38,8 @@ Modify the `glove_file_path` in your script to match the actual location of the 
 ## 3. Load GloVe Word Embeddings in Python
 Use the following code snippet to load the GloVe embeddings into a dictionary:
 
-import numpy as np
+```
+   import numpy as np
 
 embeddings_dict = {}
 with open(glove_file_path, "r", encoding="utf-8") as f:
@@ -49,3 +50,4 @@ with open(glove_file_path, "r", encoding="utf-8") as f:
         embeddings_dict[word] = vector
 
 print("GloVe embeddings loaded successfully!")
+     ```
