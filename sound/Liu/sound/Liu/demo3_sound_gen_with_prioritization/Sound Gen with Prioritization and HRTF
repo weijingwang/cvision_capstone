@@ -102,6 +102,8 @@ def play_sound(wave):
     sound = pygame.sndarray.make_sound((wave * 32767).astype(np.int16))
     sound.play()
 
+# -------------------- Main Sound Output Flow --------------------
+
 # Process detected objects and generate prioritized audio feedback
 def process_and_play_sounds(detected_objects):
     labeled_objects = label_objects(detected_objects)
