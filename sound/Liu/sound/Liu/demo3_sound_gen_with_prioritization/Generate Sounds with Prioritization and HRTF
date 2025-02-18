@@ -1,0 +1,118 @@
+"""Generate Sounds with Urgent Object Prioritization and HRTF Processing"""
+
+import numpy as np
+import pygame
+import json
+import soundfile as sf
+from scipy.signal import square
+from my_constants import *
+import globals
+from hrtf import get_HRTF_params, apply_hrtf  # Import HRTF functions
+
+# Load GloVe embeddings into a dictionary
+embeddings_dict = {}
+glove_file_path = "Your_Path_To_glove.6B\\glove.6B.100d.txt"
+with open(glove_file_path, 'r', encoding="utf-8") as f:
+    for line in f:
+        values = line.split()
+        word = values[0]
+        vector = np.array(values[1:], dtype='float32')
+        embeddings_dict[word] = vector
+
+# Define categories for urgency labeling
+categories = {
+    "Vehicles": ["car", "bike", "bus", "train", "plane", "ship"],
+    "Animals": ["dog", "cat", "fish", "tiger", "bird"]
+}
+
+# Compute word similarity using GloVe embeddings
+def compute_similarity(word1, word2):
+    if word1 in embeddings_dict and word2 in embeddings_dict:
+        vec1 = embeddings_dict[word1]
+        vec2 = embeddings_dict[word2]
+        return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+    return 0.0
+
+# Classify object based on word similarity
+def classify_word(word, similarity_threshold=0.5):
+    for category, words in categories.items():
+        if word in words:
+            return category
+        for predefined_word in words:
+            similarity = compute_similarity(word, predefined_word)
+            if similarity >= similarity_threshold:
+                return category
+    return "Uncategorized"
+
+# Label objects as urgent or non-urgent
+def label_objects(input_objects):
+    labeled_objects = []
+    for obj in input_objects:
+        object_name = obj["object"]
+        category = classify_word(object_name)
+        is_urgent = category == "Vehicles"  # Vehicles are considered urgent
+        labeled_objects.append({
+            "object": object_name,
+            "distance": obj["distance"],
+            "angle": obj["angle"],
+            "urgent": is_urgent
+        })
+    return labeled_objects
+
+# Rank urgent objects by distance (closer objects first)
+def rank_urgent_objects(labeled_objects):
+    urgent_objects = [obj for obj in labeled_objects if obj["urgent"]]
+    urgent_objects.sort(key=lambda obj: obj["distance"])
+    
+    processed_objects = [
+        {key: value for key, value in obj.items() if key != "urgent"}
+        for obj in urgent_objects
+    ]
+    return processed_objects
+
+# Generate HRTF spatialized sine wave for urgent objects
+def generate_sine_wave(frequency, duration, volume, x_angle, y_angle, distance, sample_rate=44100):
+    hrtf_file, sound_is_flipped = get_HRTF_params(y_angle, x_angle, HRTF_DIR)
+    
+    """Generate a sine wave with spatial HRTF processing."""
+    t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
+    wave = np.sin(2 * np.pi * frequency * t) * volume
+    
+    # Read HRTF filter from file
+    hrtf_input, hrtf_fs = sf.read(hrtf_file)
+    
+    # Process sound with HRTF and apply distance-based attenuation
+    processed_sound = apply_hrtf(wave, sample_rate, hrtf_input, hrtf_fs, sound_is_flipped, distance)
+
+    return processed_sound
+
+# Calculate volume using inverse square law
+def calculate_volume(depth):
+    return min(1.0, 1.0 / (depth ** 2))
+
+# Update sound with urgency-based ranking
+def update_sound(depth, x_angle, y_angle, frequency, urgent):
+    volume = calculate_volume(depth)
+    sine_wave = generate_sine_wave(frequency, DURATION, volume, x_angle, y_angle, depth)
+    return sine_wave
+
+# Play the generated sound
+def play_sound(wave):
+    pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
+    sound = pygame.sndarray.make_sound((wave * 32767).astype(np.int16))
+    sound.play()
+
+# Process detected objects and generate prioritized audio feedback
+def process_and_play_sounds(detected_objects):
+    labeled_objects = label_objects(detected_objects)
+    prioritized_objects = rank_urgent_objects(labeled_objects)
+
+    for obj in prioritized_objects:
+        frequency = 440  # Default base frequency
+        depth = obj["distance"]
+        x_angle = obj["angle"]
+        y_angle = 0  # Assuming horizontal plane sound processing
+
+        # Generate and play sound for urgent objects first
+        sound_wave = update_sound(depth, x_angle, y_angle, frequency, True)
+        play_sound(sound_wave)
