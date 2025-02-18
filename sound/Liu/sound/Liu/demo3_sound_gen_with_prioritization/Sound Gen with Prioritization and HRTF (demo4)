@@ -51,24 +51,65 @@ def label_objects(input_objects):
         object_name = obj["object"]
         category = classify_word(object_name)
         is_urgent = category == "Vehicles"  # Vehicles are considered urgent
+        
+        # Compute similarity score to vehicle category
+        similarity_score = max(compute_similarity(object_name, predefined_word) 
+                               for predefined_word in categories.get("Vehicles", []))
+        
         labeled_objects.append({
             "object": object_name,
             "distance": obj["distance"],
             "angle": obj["angle"],
+            "similarity_score": similarity_score,
             "urgent": is_urgent
         })
     return labeled_objects
 
-# Rank urgent objects by distance (closer objects first)
+# Rank urgent objects using both similarity and distance
 def rank_urgent_objects(labeled_objects):
     urgent_objects = [obj for obj in labeled_objects if obj["urgent"]]
-    urgent_objects.sort(key=lambda obj: obj["distance"])
+
+    if not urgent_objects:
+        return []
+
+    # Normalize similarity scores (0 to 1)
+    max_similarity = max(obj["similarity_score"] for obj in urgent_objects)
+    min_similarity = min(obj["similarity_score"] for obj in urgent_objects)
     
+    # Avoid division by zero in case all objects have the same similarity
+    if max_similarity - min_similarity > 0:
+        for obj in urgent_objects:
+            obj["normalized_similarity"] = (obj["similarity_score"] - min_similarity) / (max_similarity - min_similarity)
+    else:
+        for obj in urgent_objects:
+            obj["normalized_similarity"] = 1  # If all values are the same, assign max normalization
+
+    # Normalize distances (inverted so closer objects get higher ranking)
+    max_distance = max(obj["distance"] for obj in urgent_objects)
+    min_distance = min(obj["distance"] for obj in urgent_objects)
+
+    if max_distance - min_distance > 0:
+        for obj in urgent_objects:
+            obj["normalized_distance"] = 1 - ((obj["distance"] - min_distance) / (max_distance - min_distance))
+    else:
+        for obj in urgent_objects:
+            obj["normalized_distance"] = 1  # If all values are the same, assign max normalization
+
+    # Compute final ranking score with weighted importance
+    for obj in urgent_objects:
+        obj["urgency_score"] = (0.6 * obj["normalized_similarity"]) + (0.4 * obj["normalized_distance"])
+
+    # Sort by urgency score (higher score = higher priority)
+    urgent_objects.sort(key=lambda obj: obj["urgency_score"], reverse=True)
+
+    # Remove extra fields before returning
     processed_objects = [
-        {key: value for key, value in obj.items() if key != "urgent"}
+        {key: value for key, value in obj.items() if key not in ["urgent", "similarity_score", "normalized_similarity", "normalized_distance", "urgency_score"]}
         for obj in urgent_objects
     ]
+    
     return processed_objects
+
 
 # Generate HRTF spatialized sine wave for urgent objects
 def generate_sine_wave(frequency, duration, volume, x_angle, y_angle, distance, sample_rate=44100):
@@ -109,12 +150,25 @@ def process_and_play_sounds(detected_objects):
     labeled_objects = label_objects(detected_objects)
     prioritized_objects = rank_urgent_objects(labeled_objects)
 
-    for obj in prioritized_objects:
-        frequency = 440  # Default base frequency
+     for obj in prioritized_objects:
+        object_name = obj["object"]
         depth = obj["distance"]
         x_angle = obj["angle"]
-        y_angle = 0  # Assuming horizontal plane sound processing
+        y_angle = 0  # Assuming all objects are on a horizontal plane
 
-        # Generate and play sound for urgent objects first
+        # Assign frequency dynamically based on object type
+        frequency = 440  # Default base frequency
+        if "bus" in object_name or "truck" in object_name:
+            frequency = 300  # Lower frequency for larger vehicles
+        elif "bike" in object_name or "scooter" in object_name:
+            frequency = 600  # Higher frequency for smaller vehicles
+
+        print(f"Playing sound for: {object_name} at distance {depth}m, angle {x_angle}°")
+
+        # Generate and play sound with HRTF processing
         sound_wave = update_sound(depth, x_angle, y_angle, frequency, True)
         play_sound(sound_wave)
+
+# Run the main function with detected objects
+if __name__ == "__process_and_play_sounds__":
+    process_and_play_sounds(detected_objects)
