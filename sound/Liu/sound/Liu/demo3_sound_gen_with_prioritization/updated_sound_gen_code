@@ -5,9 +5,8 @@ from scipy.signal import square
 from my_constants import *
 import globals
 
-# -------------------- Load GloVe Embeddings --------------------
 embeddings_dict = {}
-glove_file_path = "your_path_to\\glove.6B\\glove.6B.100d.txt"
+glove_file_path = "C:\\Users\\Yubo Liu\\Downloads\\glove.6B\\glove.6B.100d.txt"
 with open(glove_file_path, 'r', encoding="utf-8") as f:
     for line in f:
         values = line.split()
@@ -15,13 +14,11 @@ with open(glove_file_path, 'r', encoding="utf-8") as f:
         vector = np.array(values[1:], dtype='float32')
         embeddings_dict[word] = vector
 
-# -------------------- Predefined Categories --------------------
 categories = {
     "Vehicles": ["car", "bike", "bus", "train", "plane", "ship"],
     "Animals": ["dog", "cat", "fish", "tiger", "bird"]
 }
 
-# -------------------- GloVe-Based Word Classification --------------------
 def compute_similarity(word1, word2):
     """ Compute semantic similarity between two words using GloVe embeddings. """
     if word1 in embeddings_dict and word2 in embeddings_dict:
@@ -67,7 +64,7 @@ def rank_urgent_objects(labeled_objects):
     ]
     return processed_objects
 
-# -------------------- Sound Generating --------------------
+# -------------------- Sound Processing --------------------
 def generate_sound_wave(frequency, sample_rate, volume, panning, duration=0.1, squarewave=False):
     """ Generate a stereo sine wave for object sound output. """
     t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
@@ -120,3 +117,13 @@ def process_and_play_sounds(detected_objects):
         # Generate and play sound
         sound_wave = update_sound(depth, angle, frequency, urgent)
         play_sound(None, sound_wave)  # Using None to initialize sound
+
+# -------------------- Example Usage --------------------
+if __name__ == "__main__":
+    detected_objects = [
+        {"object": "car", "distance": 4.08, "angle": 0.51},
+        {"object": "person", "distance": 4.95, "angle": 0.06},
+        {"object": "bus", "distance": 9.90, "angle": 0.70}
+    ]
+    
+    process_and_play_sounds(detected_objects)
