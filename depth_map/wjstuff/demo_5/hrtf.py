@@ -101,7 +101,8 @@ def get_closest_hrtf_file(input_elevation, input_angle, base_dir):
     if closest_file is None:
         print("No matching angle file found.")
     else:
-        print(f"Closest HRTF file: {closest_file}")
+        pass
+        # print(f"Closest HRTF file: {closest_file}")
 
     return str(closest_file)  # Ensure function returns a string path (for compatibility with soundfile)
 

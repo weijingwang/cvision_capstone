@@ -10,6 +10,7 @@ danger_objects_data = {}
 announce_state = 0 # 0 is no danger or important object. 1 is important. 2 is danger.
 is_guiding = False
 current_target_to_guide = None
+is_warning = False 
 
 # Demo variables
 frequency = 440.0  # Default frequency in Hz (A4)

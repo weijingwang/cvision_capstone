@@ -74,6 +74,7 @@ if __name__ == '__main__':
     print_menu()
     
     #Program "Grand loop"
+    test = 0
     while cap.isOpened():
         # start timing one loop
         cycle_start_time = time.time()
@@ -102,59 +103,78 @@ if __name__ == '__main__':
         depth_to_plot = process_yolo_results(raw_frame, model, results, raw_depth, depth_to_plot, tracker)
         inference_time = time.time() - inference_start_time
 
-        for track_id, obj_data in globals.objects_data.items():
-            if not obj_data['sounded_already']:
-                print(f"ID: {track_id}, Class: {obj_data['class']}, Depth: {obj_data['depth']}, "
-                    f"Confidence: {obj_data['confidence']}, X Angle: {obj_data['x_angle']}, "
-                    f"Y Angle: {obj_data['y_angle']}")
-                
-                # Example usage:
-                audio_data, samplerate = MODEL_NAMES_AUDIO[obj_data['class'].strip().lower()]
-                audio_data = resample_audio(audio_data, samplerate, SAMPLE_RATE)
-                hrtf_file, sound_is_flipped = get_HRTF_params(obj_data['y_angle'], obj_data['x_angle'], HRTF_DIR)
-                hrtf_input, hrtf_fs = sf.read(hrtf_file)  # Use soundfile to read the HRTF WAV file
-                audio_data = apply_hrtf(audio_data, SAMPLE_RATE, hrtf_input, hrtf_fs, sound_is_flipped, distance=1)
-                audio_data *= min(1.0, 1.0 / (obj_data['depth'] ** 2))
-                pygame_audio = convert_audio_format_to_pygame(audio_data, SAMPLE_RATE, SAMPLE_RATE)
-                pygame_audio = np.ascontiguousarray(pygame_audio, dtype=np.int16)
-                sound = pygame.sndarray.make_sound(pygame_audio)
-                
-                sound.play()
-                obj_data['sounded_already'] = True
 
+        if has_dangerous_items(globals.objects_data):
+            globals.is_warning = True
+        else: 
+            globals.is_warning = False
 
-        # Logic here could be simplified
-        if globals.is_guiding:
-            if globals.current_target_to_guide is not None and is_key_in_dict(globals.current_target_to_guide, globals.objects_data):
-                obj_data = globals.objects_data[globals.current_target_to_guide]
-                target_mask_vis,target_class_name, target_depth, target_x_angle, target_y_angle= obj_data['mask_vis'], obj_data['class'], obj_data['depth'], obj_data['x_angle'], obj_data['y_angle']
-                print('guiding...')
-                if target_depth < ARRIVAL_METERS:
-                    globals.current_target_to_guide = None
-            else:
-                print('lost!')
-                globals.is_guiding = False
-                
-                if globals.state == 2: # wating for the guide to finish 2
-                    # if not globals.is_guiding:
-                    globals.current_target_to_guide = None
-                    globals.state = 0
-                    print_notification('finished guiding you to target! returnung to mainstate 0!')
-                    print_menu()
+        if globals.is_warning:
+            # print_dangerous_objects(globals.objects_data)
+            test+=1
+            print(test)
+            for track_id, obj_data in globals.objects_data.items():
+                if obj_data['isDangerous']:
+                    print(f"ID: {track_id}, Class: {obj_data['class']}, Depth: {obj_data['depth']}, Danger: {obj_data['isDangerous']}")
+                    
+                    audio_data, samplerate = MODEL_NAMES_AUDIO[obj_data['class'].strip().lower()]
+                    audio_data = resample_audio(audio_data, samplerate, SAMPLE_RATE)
+                    hrtf_file, sound_is_flipped = get_HRTF_params(obj_data['y_angle'], obj_data['x_angle'], HRTF_DIR)
+                    hrtf_input, hrtf_fs = sf.read(hrtf_file)  # Use soundfile to read the HRTF WAV file
+                    audio_data = apply_hrtf(audio_data, SAMPLE_RATE, hrtf_input, hrtf_fs, sound_is_flipped, distance=1)
+                    audio_data *= min(1.0, 1.0 / (obj_data['depth'] ** 2))
+                    pygame_audio = convert_audio_format_to_pygame(audio_data, SAMPLE_RATE, SAMPLE_RATE)
+                    pygame_audio = np.ascontiguousarray(pygame_audio, dtype=np.int16)
+                    sound = pygame.sndarray.make_sound(pygame_audio)
+                    
+                    sound.play()
+                    obj_data['sounded_already'] = True
 
+        else:
+            # This announces objects upon detection
+            for track_id, obj_data in globals.objects_data.items():
+                if not obj_data['sounded_already']:
+                    print(f"ID: {track_id}, Class: {obj_data['class']}, Depth: {obj_data['depth']}, "
+                        f"Confidence: {obj_data['confidence']}, X Angle: {obj_data['x_angle']}, "
+                        f"Y Angle: {obj_data['y_angle']}")
+                    
+                    audio_data, samplerate = MODEL_NAMES_AUDIO[obj_data['class'].strip().lower()]
+                    audio_data = resample_audio(audio_data, samplerate, SAMPLE_RATE)
+                    hrtf_file, sound_is_flipped = get_HRTF_params(obj_data['y_angle'], obj_data['x_angle'], HRTF_DIR)
+                    hrtf_input, hrtf_fs = sf.read(hrtf_file)  # Use soundfile to read the HRTF WAV file
+                    audio_data = apply_hrtf(audio_data, SAMPLE_RATE, hrtf_input, hrtf_fs, sound_is_flipped, distance=1)
+                    audio_data *= min(1.0, 1.0 / (obj_data['depth'] ** 2))
+                    pygame_audio = convert_audio_format_to_pygame(audio_data, SAMPLE_RATE, SAMPLE_RATE)
+                    pygame_audio = np.ascontiguousarray(pygame_audio, dtype=np.int16)
+                    sound = pygame.sndarray.make_sound(pygame_audio)
+                    
+                    sound.play()
+                    obj_data['sounded_already'] = True
 
-            
-    # sound test
-        if globals.is_guiding:
-            # Simulate some busy loop, and change the frequency based on a condition
-            # target_sound_data[0] = (target_sound_data[0] + 10) % 1000  # Increase frequency by 10 Hz every loop
-            target_sound_data[1] = min(1.0, 1.0 / (target_depth ** 2)) # depth to volume
-            target_sound_data[2] = target_x_angle
-            target_sound_data[3] = target_y_angle
-            # print(f"Current Frequency: {target_sound_data[0]} Hz")
-            # print(target_sound_data)
-            # Trigger the sine tone to play with the updated frequency
-            frequency_event.set()
+            # Logic here could be simplified
+            # Find the target to be tracked if in tracking mode
+            if globals.is_guiding:
+                if globals.current_target_to_guide is not None and is_key_in_dict(globals.current_target_to_guide, globals.objects_data):
+                    obj_data = globals.objects_data[globals.current_target_to_guide]
+                    target_mask_vis,target_class_name, target_depth, target_x_angle, target_y_angle= obj_data['mask_vis'], obj_data['class'], obj_data['depth'], obj_data['x_angle'], obj_data['y_angle']
+                    print('guiding...')
+                    if target_depth < ARRIVAL_METERS:
+                        globals.current_target_to_guide = None
+                else:
+                    print('lost!')
+                    globals.is_guiding = False
+                    
+                    if globals.state == 2: # wating for the guide to finish 2
+                        # if not globals.is_guiding:
+                        globals.current_target_to_guide = None
+                        globals.state = 0
+                        print_notification('finished guiding you to target! returnung to mainstate 0!')
+                        print_menu()
+
+                target_sound_data[1] = min(1.0, 1.0 / (target_depth ** 2)) # depth to volume
+                target_sound_data[2] = target_x_angle
+                target_sound_data[3] = target_y_angle
+                frequency_event.set()
 
 
 
@@ -164,16 +184,16 @@ if __name__ == '__main__':
         cycle_time = time.time() - cycle_start_time
         globals.total_cycle_time += cycle_time
 
+
+
+        # Plotting stuff
         blank_img = np.zeros_like(raw_frame)
 
+        # Tracking mask
         if globals.is_guiding and globals.current_target_to_guide is not None:
-            # Get object info
-
-            # Create colored mask
             colored_mask = np.zeros_like(raw_frame)
             colored_mask[target_mask_vis > 0] = WHITE  # White mask
             
-            # Find center of the mask
             y_coords, x_coords = np.where(target_mask_vis > 0)
             if len(x_coords) > 0 and len(y_coords) > 0:
                 center_x = int(np.mean(x_coords))

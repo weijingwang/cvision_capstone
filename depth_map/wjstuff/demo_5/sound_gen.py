@@ -7,11 +7,28 @@ import globals
 from hrtf import *
 
 
+def generate_square_wave(frequency, duration, volume, x_angle, y_angle, sample_rate=44100):
+    # HRTF stuff test
+    hrtf_file, sound_is_flipped = get_HRTF_params(y_angle, x_angle, HRTF_DIR)
+    # print(hrtf_file, sound_is_flipped, x_angle, y_angle)
+        
+    """Generate a sine wave of a given frequency and duration."""
+    t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
+    wave = np.sin(2 * np.pi * frequency * t) * volume
+    
+    # Read the HRTF data from the WAV file
+    hrtf_input, hrtf_fs = sf.read(hrtf_file)  # Use soundfile to read the HRTF WAV file
+    
+    # Process the signal with HRTF
+    processed_sound = apply_hrtf(wave, sample_rate, hrtf_input, hrtf_fs, sound_is_flipped, distance=1)
+
+    return processed_sound  # Output as a NumPy array
+
 
 def generate_sine_wave(frequency, duration, volume, x_angle, y_angle, sample_rate=44100):
     # HRTF stuff test
     hrtf_file, sound_is_flipped = get_HRTF_params(y_angle, x_angle, HRTF_DIR)
-    print(hrtf_file, sound_is_flipped, x_angle, y_angle)
+    # print(hrtf_file, sound_is_flipped, x_angle, y_angle)
         
     """Generate a sine wave of a given frequency and duration."""
     t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)

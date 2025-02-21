@@ -131,19 +131,24 @@ def process_yolo_results(frame, model, results, raw_depth, depth_to_plot, tracke
             mask = results.masks.data[i].cpu().numpy()
             # Calculate average depth for this object
             avg_depth = process_depth_mask(raw_depth, mask, frame.shape[:2])
-            # Create visualization mask
-            mask_vis = cv2.resize(mask, (frame.shape[1], frame.shape[0]))
-            mask_vis = (mask_vis > 0).astype(np.uint8)
-            # Draw mask
-            colored_mask = np.zeros_like(frame)
-            colored_mask[mask_vis > 0] = [0, 255, 0]  # Green mask
-            depth_to_plot = cv2.addWeighted(depth_to_plot, 1, colored_mask, 0.5, 0)
         else:
             avg_depth = 0
             mask_vis = None
         
         isDangerous = am_i_dangerous(avg_depth, class_name)
 
+
+        # DRAWING STUFF MASKS INDIVIDUALLY
+        # Create visualization mask
+        mask_vis = cv2.resize(mask, (frame.shape[1], frame.shape[0]))
+        mask_vis = (mask_vis > 0).astype(np.uint8)
+        # Draw mask
+        colored_mask = np.zeros_like(frame)
+        if not isDangerous:
+            colored_mask[mask_vis > 0] = [0, 255, 0]  # Green mask
+        else:
+            colored_mask[mask_vis > 0] = [0, 0, 255]  # red mask BGR
+        depth_to_plot = cv2.addWeighted(depth_to_plot, 1, colored_mask, 0.8, 0)
         # Draw bounding box
         cv2.rectangle(depth_to_plot, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2)
         

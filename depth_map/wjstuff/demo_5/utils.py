@@ -7,13 +7,20 @@ import soundfile as sf
 import numpy as np
 from pathlib import Path
 import os
-
-import numpy as np
 from scipy import signal
 
+def has_dangerous_items(objects_data):
+   for track_id, obj_info in objects_data.items():
+       if obj_info.get('isDangerous', False) == True:
+           return True
+   return False
 
-import numpy as np
-from scipy import signal
+def print_dangerous_objects(objects_data):
+    for track_id, obj_info in objects_data.items():
+        if obj_info.get('isDangerous', False) == True:
+            print(f"ID: {track_id}, Class: {obj_info['class']}, Depth: {obj_info['depth']}, Danger: {obj_info['isDangerous']}")
+            # print(f"Values: {obj_info}")
+            # print("-" * 30)
 
 def resample_audio(audio_data, original_rate=8000, target_rate=44100):
     """
