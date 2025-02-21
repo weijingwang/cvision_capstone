@@ -4,7 +4,7 @@
 <tr>
 <td>
 
-This is the fourth demo for our CAPSTONE project **CViSion**. CViSion is an audio guide for the visually impaired that uses AI object detection, depth maps, and other modules to process video input. Based on the detections, spatial audio is generated for the user through headphones.
+This is the fifth demo for our CAPSTONE project **CViSion**. CViSion is an audio guide for the visually impaired that uses AI object detection, depth maps, and other modules to process video input. Based on the detections, spatial audio is generated for the user through headphones.
 
 </td>
 <td>
@@ -16,13 +16,13 @@ Fig 1. CViSion Logo
 
 ![Project Diagram](demo4.png)
 
-Fig 2. Demo4 Normal mode (running at 3fps on my Mac CPU only. ~10FPS on GPU computer)
+Fig 2. Demo5 Normal mode (running at 3fps on my Mac CPU only. ~10FPS on GPU computer)
 
 - There are two current modes in this demo.
 - There is a normal mode that announces all new objects that appear on the screen with spatial audio.
 - There is also a tracking mode that will play a tone to guide you towards that object until 1 meter away.
 - Finally, there is a WIP pygame GUI that is non-functional in this demo.
-- *The danger mode is not implemented yet*
+- There is a danger mode that will announce dangerous objects or objects less than 1 meter away. This mode overiddes all the modes automatically for safety.
 
 **Terminal user input**:
 - enter 0 for main state
