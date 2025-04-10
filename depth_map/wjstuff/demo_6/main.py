@@ -1,13 +1,18 @@
-"""
-WJDEMO 4 heavy rewriting in progress 2/10/2025
-"""
+# Add this constant to the top of the file, perhaps in my_constants.py
+# If not, add it near the other imports
+
+# Add to my_constants.py
+DEPTH_MAP_FRAME_SKIP = 3  # Process depth map every N frames
+
+# Then modify the main loop section of the code
+
 import pygame, threading, time, supervision
 # globals are imported in input_handler
 from depth_map import *
 from object_det import *
 from sound_gen import *
 from input_handler import *
-from my_constants import *
+from my_constants import *  # Make sure DEPTH_MAP_FRAME_SKIP is defined here
 from webcam import *
 from gui import *
 from hrtf import *
@@ -73,6 +78,11 @@ if __name__ == '__main__':
     print_block_letter_art("CviSion")
     print_menu()
     
+    # Initialize variables for depth map caching
+    frame_counter = 0
+    cached_raw_depth = None
+    cached_depth_to_plot = None
+    
     #Program "Grand loop"
     test = 0
     while cap.isOpened():
@@ -92,9 +102,16 @@ if __name__ == '__main__':
         globals.button_is_pressed, globals.is_held, globals.is_double_clicked = handle_gui_events(square_rect, globals.last_click_time)
         render_gui(screen, square_rect, text_surface, text_rect, globals.objects_buffer, globals.button_is_pressed, globals.is_double_clicked, clock)
 
-        # Depth map and time it
+        # Depth map calculation
         depth_start_time = time.time()
-        raw_depth, depth_to_plot = get_depth_map(raw_frame, depth_anything, args, cmap)
+        
+        # Only run depth map every DEPTH_MAP_FRAME_SKIP frames
+        if frame_counter % DEPTH_MAP_FRAME_SKIP == 0:
+            # Calculate new depth map
+            cached_raw_depth, cached_depth_to_plot = get_depth_map(raw_frame, depth_anything, args, cmap)
+        
+        # Use the cached depth map (either just calculated or from previous frames)
+        raw_depth, depth_to_plot = cached_raw_depth, cached_depth_to_plot
         depth_time = time.time() - depth_start_time
 
         # YOLO inference and time it
@@ -175,16 +192,10 @@ if __name__ == '__main__':
                 target_sound_data[2] = target_x_angle
                 target_sound_data[3] = target_y_angle
                 frequency_event.set()
-
-
-
-
             
         # End timing the entire cycle
         cycle_time = time.time() - cycle_start_time
         globals.total_cycle_time += cycle_time
-
-
 
         # Plotting stuff
         blank_img = np.zeros_like(raw_frame)
@@ -244,6 +255,9 @@ if __name__ == '__main__':
             final_output = cv2.vconcat([top_row_frame, bottom_row_frame])
             cv2.imshow("wjdemo4", final_output)
 
+        # Increment frame counter for depth map skipping
+        frame_counter += 1
+
         # Break the loop on 'q' key press
         if (cv2.waitKey(1) & 0xFF == ord('q')) or globals.quit == True:
             print("quitting...")
@@ -254,7 +268,3 @@ if __name__ == '__main__':
             quit_app()
 
 # end of program :)
-
-
-
-
