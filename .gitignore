@@ -598,3 +598,22 @@ depth_map/wjstuff/demo_5/depth_anything_v2/util/blocks.py
 depth_map/wjstuff/demo_5/depth_anything_v2/util/transform.py
 depth_map/wjstuff/demo_5/DA2/
 depth_map/wjstuff/demo_5/sort/
+depth_map/wjstuff/demo_6/sort/
+depth_map/wjstuff/demo_6/person_walk_test.mp4
+depth_map/wjstuff/demo_6/person_walk_test_low.mov
+depth_map/wjstuff/demo_6/IMG_7902.mov
+depth_map/wjstuff/demo_6/IMG_7902 - FPS - Videobolt.net.mp4
+depth_map/wjstuff/demo_6/IMG_7902 - FPS - SPEED - Videobolt.net.mp4
+depth_map/wjstuff/demo_6/IMG_7902 - FPS - SPEED - Videobolt copy.net.mp4
+depth_map/wjstuff/demo_6/depth_anything_v2/dinov2.py
+depth_map/wjstuff/demo_6/depth_anything_v2/dinov2_layers/__init__.py
+depth_map/wjstuff/demo_6/depth_anything_v2/dinov2_layers/attention.py
+depth_map/wjstuff/demo_6/depth_anything_v2/dinov2_layers/block.py
+depth_map/wjstuff/demo_6/depth_anything_v2/dinov2_layers/drop_path.py
+depth_map/wjstuff/demo_6/depth_anything_v2/dinov2_layers/layer_scale.py
+depth_map/wjstuff/demo_6/depth_anything_v2/dinov2_layers/mlp.py
+depth_map/wjstuff/demo_6/depth_anything_v2/dinov2_layers/patch_embed.py
+depth_map/wjstuff/demo_6/depth_anything_v2/dinov2_layers/swiglu_ffn.py
+depth_map/wjstuff/demo_6/depth_anything_v2/dpt.py
+depth_map/wjstuff/demo_6/depth_anything_v2/util/blocks.py
+depth_map/wjstuff/demo_6/depth_anything_v2/util/transform.py
