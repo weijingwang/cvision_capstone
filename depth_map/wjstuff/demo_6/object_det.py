@@ -1,9 +1,8 @@
 """
-YOLO STUFF
+YOLO AND ARUCO DETECTION
 """
 
 from ultralytics import YOLO
-# from sort.sort import Sort  # Ensure you have SORT (e.g., from https://github.com/abewley/sort) available
 import numpy as np
 import cv2
 import globals
@@ -12,10 +11,38 @@ import supervision as sv
 
 def init_objectDet():
     model = YOLO('yolov8n-seg.pt')  # Use the appropriate YOLOv8 model variant (n, s, m, l, x)
-    # model = YOLO('yolo11n-seg.pt')
-    # MODEL_NAMES = list(model.names.values())
     return model
 
+def init_aruco_detector():
+    """Initialize ArUco marker detector based on OpenCV version"""
+    opencv_major_ver = int(cv2.__version__.split('.')[0])
+    
+    if opencv_major_ver >= 4:
+        try:
+            # Try newer API first (OpenCV 4.7+)
+            aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
+            aruco_params = cv2.aruco.DetectorParameters()
+            detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
+            
+            def detect_func(img):
+                return detector.detectMarkers(img)
+                
+        except AttributeError:
+            # Fall back to older API (OpenCV 4.0-4.6)
+            aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
+            aruco_params = cv2.aruco.DetectorParameters_create()
+            
+            def detect_func(img):
+                return cv2.aruco.detectMarkers(img, aruco_dict, parameters=aruco_params)
+    else:
+        # Very old OpenCV 3.x
+        aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
+        aruco_params = cv2.aruco.DetectorParameters_create()
+        
+        def detect_func(img):
+            return cv2.aruco.detectMarkers(img, aruco_dict, parameters=aruco_params)
+    
+    return detect_func
 
 def am_i_dangerous(depth, classname):
     if depth < 1 or classname in DANGEROUS_OBJECTS:
@@ -87,10 +114,87 @@ def get_distance_of_object(depth_masked): # input is a segment of depth map
     average_non_zero = np.mean(non_zero_elements)
     return average_non_zero
 
+def detect_aruco_markers(frame, raw_depth, aruco_detector, depth_to_plot):
+    """
+    Detect ArUco markers in the frame and add them to globals.objects_data
+    
+    Args:
+        frame: Input color frame
+        raw_depth: Raw depth map
+        aruco_detector: Function to detect ArUco markers
+        depth_to_plot: Visualization frame to draw on
+    """
+    # Convert to grayscale for ArUco detection
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    
+    # Detect ArUco markers
+    corners, ids, rejected = aruco_detector(gray)
+    
+    # Process detected markers
+    if ids is not None and len(ids) > 0:
+        # Draw the detected markers
+        cv2.aruco.drawDetectedMarkers(depth_to_plot, corners, ids)
+        
+        # Process each detected marker
+        for i in range(len(ids)):
+            # Get marker ID
+            marker_id = ids[i][0]
+            
+            # Get the corners of the marker
+            corner = corners[i][0]
+            corner = corner.astype(np.int32)
+            
+            # Get the bounding box
+            x_min = int(min(corner[:, 0]))
+            y_min = int(min(corner[:, 1]))
+            x_max = int(max(corner[:, 0]))
+            y_max = int(max(corner[:, 1]))
+            
+            # Calculate center
+            x_center = int((x_min + x_max) / 2)
+            y_center = int((y_min + y_max) / 2)
+            
+            # Normalize to [0, 1]
+            x_angle = x_center / frame.shape[1]
+            y_angle = y_center / frame.shape[0]
+            
+            # Create a mask for this marker
+            marker_mask = np.zeros(frame.shape[:2], dtype=np.uint8)
+            cv2.fillPoly(marker_mask, [corner], 255)
+            
+            # Calculate depth
+            avg_depth = process_depth_mask(raw_depth, marker_mask, frame.shape[:2])
+            
+            # Draw bounding box
+            cv2.rectangle(depth_to_plot, (x_min, y_min), (x_max, y_max), (0, 255, 255), 2)
+            
+            # Add marker ID and depth info
+            label = f"ArUco ID: {marker_id} {avg_depth:.2f}m"
+            cv2.putText(depth_to_plot, label, (x_min, y_min - 10),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+            
+            # Store in globals with a special prefix to distinguish from regular objects
+            track_id = f"aruco_{marker_id}"
+            
+            # Store object information
+            globals.objects_data[track_id] = {
+                'class': f"ArUco_{marker_id}",
+                'depth': float(avg_depth),
+                'sounded_already': globals.objects_data.get(track_id, {}).get('sounded_already', False),
+                'confidence': 1.0,  # ArUco markers are deterministic
+                'mask_vis': marker_mask,
+                'x_angle': float(x_angle),
+                'y_angle': float(y_angle),
+                'isDangerous': False  # By default, ArUco markers are not considered dangerous
+            }
+    
+    return depth_to_plot
 
-
-
-def process_yolo_results(frame, model, results, raw_depth, depth_to_plot, tracker):
+def process_yolo_results(frame, model, results, raw_depth, depth_to_plot, tracker, aruco_detector=None):
+    # Process ArUco markers if detector is provided
+    if aruco_detector is not None:
+        depth_to_plot = detect_aruco_markers(frame, raw_depth, aruco_detector, depth_to_plot)
+    
     # Convert YOLO results to supervision Detections format
     detections = yolo_to_sv_detections(results)
     
@@ -102,11 +206,14 @@ def process_yolo_results(frame, model, results, raw_depth, depth_to_plot, tracke
     sounded_states = {
         track_id: obj_data['sounded_already'] 
         for track_id, obj_data in globals.objects_data.items()
+        if not (isinstance(track_id, str) and track_id.startswith("aruco_"))  # Check if it's a string first
     }
-    
-    # Clear previous objects info
-    globals.objects_data.clear()
-    
+
+    # Clear previous objects info (except ArUco markers)
+    for track_id in list(globals.objects_data.keys()):
+        if not (isinstance(track_id, str) and track_id.startswith("aruco_")):
+            globals.objects_data.pop(track_id)
+
     # Process each detection
     for i in range(len(detections)):
         # Get box coordinates
@@ -136,7 +243,6 @@ def process_yolo_results(frame, model, results, raw_depth, depth_to_plot, tracke
             mask_vis = None
         
         isDangerous = am_i_dangerous(avg_depth, class_name)
-
 
         # DRAWING STUFF MASKS INDIVIDUALLY
         # Create visualization mask
@@ -170,3 +276,4 @@ def process_yolo_results(frame, model, results, raw_depth, depth_to_plot, tracke
         }
     
     return depth_to_plot
+
