@@ -617,3 +617,4 @@ depth_map/wjstuff/demo_6/depth_anything_v2/dinov2_layers/swiglu_ffn.py
 depth_map/wjstuff/demo_6/depth_anything_v2/dpt.py
 depth_map/wjstuff/demo_6/depth_anything_v2/util/blocks.py
 depth_map/wjstuff/demo_6/depth_anything_v2/util/transform.py
+depth_map/wjstuff/demo_6/DA2/
