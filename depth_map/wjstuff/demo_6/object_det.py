@@ -9,8 +9,22 @@ import globals
 from my_constants import *
 import supervision as sv
 
-def init_objectDet():
-    model = YOLO('yolov8n-seg.pt')  # Use the appropriate YOLOv8 model variant (n, s, m, l, x)
+def init_objectDet(exclude_names):
+    model = YOLO('yolov8n-seg.pt')
+
+    # Get all class names and IDs
+    class_name_to_id = {name: id for id, name in model.names.items()}
+
+    # Classes to exclude
+    # exclude_names = ['airplane', 'kite', 'bear']
+    exclude_ids = [class_name_to_id[name] for name in exclude_names if name in class_name_to_id]
+
+    # Create list of classes to keep
+    all_class_ids = list(model.names.keys())
+    include_ids = [i for i in all_class_ids if i not in exclude_ids]
+
+    # Save the include_ids in the model for later use
+    model.allowed_classes = include_ids
     return model
 
 def init_aruco_detector():
@@ -114,7 +128,7 @@ def get_distance_of_object(depth_masked): # input is a segment of depth map
     average_non_zero = np.mean(non_zero_elements)
     return average_non_zero
 
-def detect_aruco_markers(frame, raw_depth, aruco_detector, depth_to_plot):
+def detect_aruco_markers(frame, raw_depth, aruco_detector, depth_to_plot, cached_aruco_ids=None):
     """
     Detect ArUco markers in the frame and add them to globals.objects_data
     
@@ -123,7 +137,15 @@ def detect_aruco_markers(frame, raw_depth, aruco_detector, depth_to_plot):
         raw_depth: Raw depth map
         aruco_detector: Function to detect ArUco markers
         depth_to_plot: Visualization frame to draw on
+        cached_aruco_ids: List of previously detected ArUco IDs (optional)
+    
+    Returns:
+        depth_to_plot: Updated visualization frame
+        detected_aruco_ids: List of detected ArUco IDs in this frame
     """
+    # Keep track of detected markers in this frame
+    detected_aruco_ids = []
+    
     # Convert to grayscale for ArUco detection
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
@@ -139,6 +161,8 @@ def detect_aruco_markers(frame, raw_depth, aruco_detector, depth_to_plot):
         for i in range(len(ids)):
             # Get marker ID
             marker_id = ids[i][0]
+            track_id = f"aruco_{marker_id}"
+            detected_aruco_ids.append(track_id)  # Track which markers are visible
             
             # Get the corners of the marker
             corner = corners[i][0]
@@ -173,9 +197,6 @@ def detect_aruco_markers(frame, raw_depth, aruco_detector, depth_to_plot):
             cv2.putText(depth_to_plot, label, (x_min, y_min - 10),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
             
-            # Store in globals with a special prefix to distinguish from regular objects
-            track_id = f"aruco_{marker_id}"
-            
             # Store object information
             globals.objects_data[track_id] = {
                 'class': f"ArUco_{marker_id}",
@@ -185,15 +206,26 @@ def detect_aruco_markers(frame, raw_depth, aruco_detector, depth_to_plot):
                 'mask_vis': marker_mask,
                 'x_angle': float(x_angle),
                 'y_angle': float(y_angle),
-                'isDangerous': False  # By default, ArUco markers are not considered dangerous
+                'isDangerous': False,  # By default, ArUco markers are not considered dangerous
+                'marker_id': int(marker_id)  # Store the marker ID explicitly
             }
     
-    return depth_to_plot
+    # Only remove ArUco markers that haven't been detected for a while
+    # (In this case, we're using cached_aruco_ids to determine which ones to keep)
+    if cached_aruco_ids is not None:
+        for track_id in list(globals.objects_data.keys()):
+            if (isinstance(track_id, str) and track_id.startswith("aruco_") and 
+                track_id not in detected_aruco_ids and track_id not in cached_aruco_ids):
+                globals.objects_data.pop(track_id)
+    
+    # Return the updated visualization and the list of detected ArUco IDs
+    return depth_to_plot, detected_aruco_ids
 
 def process_yolo_results(frame, model, results, raw_depth, depth_to_plot, tracker, aruco_detector=None):
     # Process ArUco markers if detector is provided
     if aruco_detector is not None:
-        depth_to_plot = detect_aruco_markers(frame, raw_depth, aruco_detector, depth_to_plot)
+        # Create a fresh copy for ArUco visualization to avoid accumulating boxes
+        depth_to_plot, _ = detect_aruco_markers(frame, raw_depth, aruco_detector, depth_to_plot.copy())
     
     # Convert YOLO results to supervision Detections format
     detections = yolo_to_sv_detections(results)
@@ -216,6 +248,7 @@ def process_yolo_results(frame, model, results, raw_depth, depth_to_plot, tracke
 
     # Process each detection
     for i in range(len(detections)):
+        # Rest of your code remains the same...
         # Get box coordinates
         box = detections.xyxy[i].astype(int)
         x1, y1, x2, y2 = map(int, box)  # Convert to integers
@@ -276,4 +309,3 @@ def process_yolo_results(frame, model, results, raw_depth, depth_to_plot, tracke
         }
     
     return depth_to_plot
-
