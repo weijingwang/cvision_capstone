@@ -25,7 +25,8 @@ MODEL_NAMES = [
 ]
 IGNORE_OBJECTS = ['airplane', 'scissors', 'tie',
                  'refrigerator', 'person', 'kite', 
-                 'cell phone', 'tv', 'donut']
+                 'cell phone', 'tv', 'donut',
+                 'bird', 'boat']
 
 #pygame demo stuff
 SCREEN_WIDTH = 300
