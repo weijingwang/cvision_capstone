@@ -17,7 +17,7 @@ def generate_aruco_markers():
     
     # Generate and save several markers
     marker_size = 200  # pixels
-    for id in range(5):  # Generate 5 markers with IDs 0-4
+    for id in range(50):  # Generate 5 markers with IDs 0-4
         # Create the marker image
         try:
             # Newer API
