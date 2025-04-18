@@ -1,3 +1,4 @@
+# main.py
 import pygame, threading, time, supervision
 # globals are imported in input_handler
 from depth_map import *
@@ -11,7 +12,8 @@ from hrtf import *
 
 # Add to my_constants.py if not already there
 DEPTH_MAP_FRAME_SKIP = 50  # Process depth map every N frames
-ARUCO_FRAME_SKIP = 2  # Process ArUco detection every N frames (can be different from depth map skip)
+ARUCO_FRAME_SKIP = 1  # Process ArUco detection every N frames (can be different from depth map skip)
+ARUCO_PERSISTENCE_FRAMES = 5  # Number of frames to keep ArUco markers in memory after they disappear
 
 pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=2)
 pygame.init()
@@ -92,6 +94,9 @@ if __name__ == '__main__':
     cached_raw_depth = None
     cached_depth_to_plot = None
     
+    # Initialize ArUco tracking
+    aruco_marker_history = {}  # Dictionary to track ArUco markers {marker_id: frames_since_last_seen}
+    
     #Program "Grand loop"
     test = 0
     while cap.isOpened():
@@ -127,12 +132,29 @@ if __name__ == '__main__':
         inference_start_time = time.time()
         results = model(raw_frame, verbose=False, classes=model.allowed_classes)[0]
 
-        # Only run ArUco detection every ARUCO_FRAME_SKIP frames to save processing time
-        current_aruco_detector = None
+        # Process ArUco markers only on specific frames
+        detected_aruco_ids = []
         if aruco_frame_counter % ARUCO_FRAME_SKIP == 0:
-            current_aruco_detector = aruco_detector
-
-        depth_to_plot = process_yolo_results(raw_frame, model, results, raw_depth, depth_to_plot, tracker, current_aruco_detector)
+            # Process ArUco markers and get list of currently detected IDs
+            depth_to_plot, detected_aruco_ids = detect_aruco_markers(raw_frame, raw_depth, aruco_detector, depth_to_plot)
+            
+            # Update marker history - reset counter for detected markers
+            for aruco_id in detected_aruco_ids:
+                aruco_marker_history[aruco_id] = 0
+            
+            # Increment counter for all markers not detected in this frame
+            for aruco_id in list(aruco_marker_history.keys()):
+                if aruco_id not in detected_aruco_ids:
+                    aruco_marker_history[aruco_id] += 1
+                    
+                    # If marker hasn't been seen for ARUCO_PERSISTENCE_FRAMES, remove it
+                    if aruco_marker_history[aruco_id] >= ARUCO_PERSISTENCE_FRAMES:
+                        if aruco_id in globals.objects_data:
+                            globals.objects_data.pop(aruco_id)
+                        aruco_marker_history.pop(aruco_id)
+        
+        # Process YOLO results
+        depth_to_plot = process_yolo_results(raw_frame, model, results, raw_depth, depth_to_plot, tracker)
         inference_time = time.time() - inference_start_time
 
         if has_dangerous_items(globals.objects_data):
