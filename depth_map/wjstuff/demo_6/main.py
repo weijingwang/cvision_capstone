@@ -63,21 +63,21 @@ if __name__ == '__main__':
 
     MODEL_NAMES_AUDIO = create_audio_dictionary('classnames_audio')
     
-    # Make sure you have an audio file for ArUco markers
-    # If not already in your audio dictionary, add a default sound for ArUco markers
-    if 'aruco_marker' not in MODEL_NAMES_AUDIO:
-        # Use a default sound or create one specifically for ArUco markers
-        # For example, you could use the sound for a similar object or create a new one
-        # This is just an example - replace with an appropriate sound
-        if 'marker' in MODEL_NAMES_AUDIO:
-            MODEL_NAMES_AUDIO['aruco_marker'] = MODEL_NAMES_AUDIO['marker']
-        else:
-            # Use any existing sound as a fallback - replace with something appropriate
-            first_key = next(iter(MODEL_NAMES_AUDIO))
-            MODEL_NAMES_AUDIO['aruco_marker'] = MODEL_NAMES_AUDIO[first_key]
+    # # Make sure you have an audio file for ArUco markers
+    # # If not already in your audio dictionary, add a default sound for ArUco markers
+    # if 'aruco_marker' not in MODEL_NAMES_AUDIO:
+    #     # Use a default sound or create one specifically for ArUco markers
+    #     # For example, you could use the sound for a similar object or create a new one
+    #     # This is just an example - replace with an appropriate sound
+    #     if 'marker' in MODEL_NAMES_AUDIO:
+    #         MODEL_NAMES_AUDIO['aruco_marker'] = MODEL_NAMES_AUDIO['marker']
+    #     else:
+    #         # Use any existing sound as a fallback - replace with something appropriate
+    #         first_key = next(iter(MODEL_NAMES_AUDIO))
+    #         MODEL_NAMES_AUDIO['aruco_marker'] = MODEL_NAMES_AUDIO[first_key]
     
-    data, samplerate = MODEL_NAMES_AUDIO['bowl']
-    print(data, samplerate)
+    # data, samplerate = MODEL_NAMES_AUDIO['bowl']
+    # print(data, samplerate)
 
     # Initialize webcam
     webcam_data = webcam_init()
@@ -170,7 +170,16 @@ if __name__ == '__main__':
                 if obj_data['isDangerous']:
                     print(f"ID: {track_id}, Class: {obj_data['class']}, Depth: {obj_data['depth']}, Danger: {obj_data['isDangerous']}")
                     
-                    audio_data, samplerate = MODEL_NAMES_AUDIO[obj_data['class'].strip().lower()]
+                    cls = obj_data['class'].strip().lower()
+                    audio_data, samplerate = (
+                        MODEL_NAMES_AUDIO.get(cls) or
+                        (MODEL_NAMES_AUDIO['aruco_generic'] if cls.startswith('aruco_') else None)
+                    )
+
+                    if audio_data is None:
+                        raise ValueError(f"No audio found for class '{cls}', and no fallback available.")
+
+
                     audio_data = resample_audio(audio_data, samplerate, SAMPLE_RATE)
                     hrtf_file, sound_is_flipped = get_HRTF_params(obj_data['y_angle'], obj_data['x_angle'], HRTF_DIR)
                     hrtf_input, hrtf_fs = sf.read(hrtf_file)  # Use soundfile to read the HRTF WAV file
@@ -199,7 +208,16 @@ if __name__ == '__main__':
                     
                     class_name = obj_data['class'].strip().lower()
                     if class_name in MODEL_NAMES_AUDIO:
-                        audio_data, samplerate = MODEL_NAMES_AUDIO[class_name]
+
+                        cls = obj_data['class'].strip().lower()
+                        audio_data, samplerate = (
+                            MODEL_NAMES_AUDIO.get(cls) or
+                            (MODEL_NAMES_AUDIO['aruco_generic'] if cls.startswith('aruco_') else None)
+                        )
+
+                        if audio_data is None:
+                            raise ValueError(f"No audio found for class '{cls}', and no fallback available.")
+
                         audio_data = resample_audio(audio_data, samplerate, SAMPLE_RATE)
                         hrtf_file, sound_is_flipped = get_HRTF_params(obj_data['y_angle'], obj_data['x_angle'], HRTF_DIR)
                         hrtf_input, hrtf_fs = sf.read(hrtf_file)  # Use soundfile to read the HRTF WAV file

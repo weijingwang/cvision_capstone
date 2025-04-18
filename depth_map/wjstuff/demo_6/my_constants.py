@@ -23,7 +23,9 @@ MODEL_NAMES = [
     'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell phone', 'microwave', 'oven',
     'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush'
 ]
-IGNORE_OBJECTS = ['airplane', 'scissors', 'tie', 'refrigerator', 'person', 'kite', 'cell phone', 'tv']
+IGNORE_OBJECTS = ['airplane', 'scissors', 'tie',
+                 'refrigerator', 'person', 'kite', 
+                 'cell phone', 'tv', 'donut']
 
 #pygame demo stuff
 SCREEN_WIDTH = 300
@@ -46,3 +48,10 @@ HRTF_DIR = "./HRTF/MIT/diffuse"
 
 # ASCII characters from dark to light
 ASCII_CHARS = "@%#*+=-:. "
+
+# Add to my_constants.py if not already there
+DEPTH_MAP_FRAME_SKIP = 50  # Process depth map every N frames
+ARUCO_FRAME_SKIP = 1  # Process ArUco detection every N frames (can be different from depth map skip)
+ARUCO_PERSISTENCE_FRAMES = 5  # Number of frames to keep ArUco markers in memory after they disappear
+
+
