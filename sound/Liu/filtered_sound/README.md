@@ -1,97 +1,155 @@
-import time
-import threading
-import heapq
+# 🚨 Real-Time Urgent-Sound Detection Project
 
-import numpy as np
-import pygame
-import soundfile as sf  # for reading HRTF WAV
+This project implements real-time detection of urgent environmental sounds (e.g., car horns, sirens, alarms) using two neural network models: **MobileNetV3** and **YAMNet** fine-tuned on AudioSet.
 
-from hrtf import get_HRTF_params, apply_hrtf
-from my_constants import HRTF_DIR
+---
 
-# ——————————————————————————————————————————————
-# CONFIG
-# ——————————————————————————————————————————————
-COOLDOWN       = 2.0     # secs before same obj can re-announce
-DISTANCE_STEP  = 0.5     # announce again if object moves > this much closer
-DISPATCH_HZ    = 20      # checks per second
-SINE_LOW       = 400     # Hz for non-dangerous
-SINE_HIGH      = 1500    # Hz for dangerous
-DURATION       = 0.1     # secs tone length
-SAMPLE_RATE    = 44100
+## 📁 Repository Structure
 
-# dangerous if label contains any of:
-URGENT_KEYWORDS = {
-    "car horn", "horn",
-    "siren", "alarm",
-    "train", "vehicle", "engine", "motor"
-}
+```
+shiv_capstone/
+├── mobilenetv3_weights/
+│   └── mobilenetv3_large_100_ra-f55367f5.pth
+├── yamnet_weights/
+│   └── yamnet.h5 (optional local copy)
+├── sound/
+│   └── Liu/
+│       ├── sound_gen_filtered.py
+│       ├── demo3_sound_gen_with_prioritization.py
+│       ├── hrtf_with_urgent_labels.py
+│       └── schedule_sound.py
+├── prototype/
+│   ├── real_time_urgent_detection.py (MobileNetV3)
+│   └── yamnet_real_time_urgent_detection.py (YAMNet)
+├── requirements.txt
+└── README.md
+```
 
-# ——————————————————————————————————————————————
-# STATE
-# ——————————————————————————————————————————————
-_last_seen = {}    # obj_id -> (last_time, last_distance)
-_queue     = []    # heap of (enqueue_time, obj_id, label, distance, x, y)
-_lock      = threading.Lock()
+---
 
+## ⚡ Quick Start
 
-def schedule_sound(obj_id: str,
-                   label: str,
-                   distance: float,
-                   x_angle: float,
-                   y_angle: float):
-    """
-    Called by your detection loop. Decides whether to enqueue a tone for this object.
-    """
-    now = time.time()
-    prev = _last_seen.get(obj_id, (0.0, float("inf")))
-    last_t, last_d = prev
+### Clone the Repository
 
-    is_urgent = any(k in label.lower() for k in URGENT_KEYWORDS)
-    dt = now - last_t
-    dd = (last_d - distance)
+```bash
+git clone https://github.com/your-username/shiv_capstone.git
+cd shiv_capstone
+```
 
-    # Only re-announce if:
-    #  - first time, or
-    #  - it's been >= COOLDOWN secs OR it moved significantly closer
-    if last_t == 0 or dt >= COOLDOWN or dd >= DISTANCE_STEP:
-        _last_seen[obj_id] = (now, distance)
-        with _lock:
-            heapq.heappush(_queue, (now, obj_id, label, distance, x_angle, y_angle))
+### Set Up the Environment
 
+```bash
+python -m venv env
+# Activate virtual environment
+source env/bin/activate  # macOS/Linux
+.\env\Scripts\activate  # Windows
 
-def _dispatcher():
-    """Background thread: pops and plays one tone at a time."""
-    pygame.mixer.init(frequency=SAMPLE_RATE, channels=2)
-    while True:
-        evt = None
-        with _lock:
-            if _queue:
-                evt = heapq.heappop(_queue)
+pip install -r requirements.txt
+```
 
-        if evt:
-            _, obj_id, label, dist, x_ang, y_ang = evt
+---
 
-            # choose pitch
-            freq = SINE_HIGH if any(k in label.lower() for k in URGENT_KEYWORDS) else SINE_LOW
+## 🔗 Download Pretrained Models
 
-            # generate sine
-            t = np.linspace(0, DURATION, int(SAMPLE_RATE * DURATION), endpoint=False)
-            wave = (np.sin(2 * np.pi * freq * t) * 0.5).astype(np.float32)
+- **MobileNetV3:** [Download from Hugging Face](https://huggingface.co/shiertier/models/resolve/main/mobilenetv3_large_100_ra-f55367f5.pth) and save it in:
 
-            # apply HRTF
-            hrtf_file, flipped = get_HRTF_params(y_ang, x_ang, HRTF_DIR)
-            hrtf_data, hrtf_sr = sf.read(hrtf_file)
-            proc = apply_hrtf(wave, SAMPLE_RATE, hrtf_data, hrtf_sr, flipped, dist)
+```
+mobilenetv3_weights/mobilenetv3_large_100_ra-f55367f5.pth
+```
 
-            # play
-            snd = pygame.sndarray.make_sound((proc * 32767).astype(np.int16))
-            snd.play()
-            time.sleep(DURATION)  # block until tone finishes
-        else:
-            # idle
-            time.sleep(1.0 / DISPATCH_HZ)
+- **YAMNet:** Optionally download from [TensorFlow Hub](https://tfhub.dev/google/yamnet/1) and save it as:
 
+```
+yamnet_weights/yamnet.h5
+```
 
-# start dispatcher
-threading.Thread(target=_dispatcher, daemon=True).start()
+---
+
+## 🎙️ Run Real-Time Detection
+
+- **MobileNetV3:**
+
+```bash
+python prototype/real_time_urgent_detection.py
+```
+
+- **YAMNet:**
+
+```bash
+python prototype/yamnet_real_time_urgent_detection.py
+```
+
+Use `Ctrl+C` to stop the detection loop.
+
+---
+
+## 🔍 How It Works
+
+### Audio Capture & Preprocessing
+- Captures real-time audio (1-second segments).
+- Processes audio into spectrograms (MobileNetV3) or raw waveform (YAMNet).
+
+### Model Predictions
+- **MobileNetV3:** Outputs softmax probabilities.
+- **YAMNet:** Provides frame-level and clip-level predictions.
+
+### Urgency Detection Logic
+- Alerts triggered when:
+  - Prediction probability ≥ 0.25 (MobileNetV3).
+  - Top prediction significantly higher than second (Δ ≥ 0.20).
+  - Keyword match: `"car horn", "siren", "train", "alarm", "horn"`.
+  - Special override: index `588` for verified car horn.
+  - YAMNet checks top 3 predictions with threshold ≥ 0.15.
+
+---
+
+## 🔊 Sound Generation
+
+- High-pitch (`sine_high`) tones indicate dangerous objects (vehicles).
+- Filters repetitive alerts (COOLDOWN period).
+- Sequentially queues sounds to avoid overwhelming.
+
+---
+
+## 🛠️ Customization
+
+Adjust parameters directly within the detection scripts:
+
+- Thresholds (`TH1`, `TH2`).
+- Urgent keyword lists.
+- Audio segment duration and sample rate.
+
+---
+
+## ✅ Testing
+
+- Run detection scripts and play urgent sounds (horns, alarms).
+- Verify alert logs and high-pitch sound cues.
+
+---
+
+## ⚠️ Troubleshooting
+
+- Missing modules:
+
+```bash
+pip install sounddevice librosa torch torchvision timm tensorflow tensorflow_hub pygame numpy scipy
+```
+
+- Permission errors on Windows:
+
+```powershell
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+- Ensure model weight files are correctly placed.
+
+---
+
+## 🌟 Future Improvements
+
+- More refined cooldown logic.
+- Enhanced prioritization (hierarchical urgency).
+- Extensive real-world testing to optimize thresholds.
+
+---
