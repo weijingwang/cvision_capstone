@@ -4,6 +4,7 @@ First, create an env and install
 
 ```bash
 conda create -n depth_distillation -y python=3.9
+conda activate depth_distillation
 pip install -r requirements.txt 
 ```
 Then, to get the teacher pretrained model go ito the ml_depth_pro dir and run 
