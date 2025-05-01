@@ -632,3 +632,7 @@ depth_map/wjstuff/demo_7/depth_anything_v2/util/blocks.py
 depth_map/wjstuff/demo_7/depth_anything_v2/util/transform.py
 depth_map/wjstuff/demo_7/DA2/
 depth_map/wjstuff/demo_7/sort/
+depth_distillation/checkpoints/
+depth_distillation/runs/
+depth_distillation/*.pt
+depth_distillation/*.pth
