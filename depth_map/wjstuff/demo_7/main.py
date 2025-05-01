@@ -10,10 +10,6 @@ from webcam import *
 from gui import *
 from hrtf import *
 
-# Add to my_constants.py if not already there
-DEPTH_MAP_FRAME_SKIP = 50  # Process depth map every N frames
-ARUCO_FRAME_SKIP = 1  # Process ArUco detection every N frames (can be different from depth map skip)
-ARUCO_PERSISTENCE_FRAMES = 5  # Number of frames to keep ArUco markers in memory after they disappear
 
 pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=2)
 pygame.init()
@@ -184,7 +180,7 @@ if __name__ == '__main__':
                     hrtf_file, sound_is_flipped = get_HRTF_params(obj_data['y_angle'], obj_data['x_angle'], HRTF_DIR)
                     hrtf_input, hrtf_fs = sf.read(hrtf_file)  # Use soundfile to read the HRTF WAV file
                     audio_data = apply_hrtf(audio_data, SAMPLE_RATE, hrtf_input, hrtf_fs, sound_is_flipped, distance=1)
-                    audio_data *= min(1.0, 1.0 / (obj_data['depth'] ** 2))
+                    audio_data *= sigmoid_volume(obj_data['depth'], steepness=5, midpoint=1.0)
                     pygame_audio = convert_audio_format_to_pygame(audio_data, SAMPLE_RATE, SAMPLE_RATE)
                     pygame_audio = np.ascontiguousarray(pygame_audio, dtype=np.int16)
                     sound = pygame.sndarray.make_sound(pygame_audio)
@@ -222,7 +218,8 @@ if __name__ == '__main__':
                         hrtf_file, sound_is_flipped = get_HRTF_params(obj_data['y_angle'], obj_data['x_angle'], HRTF_DIR)
                         hrtf_input, hrtf_fs = sf.read(hrtf_file)  # Use soundfile to read the HRTF WAV file
                         audio_data = apply_hrtf(audio_data, SAMPLE_RATE, hrtf_input, hrtf_fs, sound_is_flipped, distance=1)
-                        audio_data *= min(1.0, 1.0 / (obj_data['depth'] ** 2))
+                        audio_data *= sigmoid_volume(obj_data['depth'], steepness=5, midpoint=1.0)
+                        # audio_data *= min(1.0, 1.0 / (obj_data['depth'] ** 2))
                         pygame_audio = convert_audio_format_to_pygame(audio_data, SAMPLE_RATE, SAMPLE_RATE)
                         pygame_audio = np.ascontiguousarray(pygame_audio, dtype=np.int16)
                         sound = pygame.sndarray.make_sound(pygame_audio)

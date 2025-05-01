@@ -5,6 +5,10 @@ from scipy.signal import square
 from my_constants import *
 import globals
 from hrtf import *
+import math
+
+def sigmoid_volume(depth, steepness=10, midpoint=1.0):
+    return 1.0 / (1.0 + math.exp(steepness * (depth - midpoint)))
 
 
 def generate_sine_wave(frequency, duration, volume, x_angle, y_angle, sample_rate=44100):

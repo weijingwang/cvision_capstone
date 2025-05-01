@@ -1,6 +1,10 @@
 """My constants"""
 
 
+# Add to my_constants.py if not already there
+DEPTH_MAP_FRAME_SKIP = 50  # Process depth map every N frames
+ARUCO_FRAME_SKIP = 1  # Process ArUco detection every N frames (can be different from depth map skip)
+ARUCO_PERSISTENCE_FRAMES = 5  # Number of frames to keep ArUco markers in memory after they disappear
 
 ARRIVAL_METERS = 1
 WEBCAM_RESOLUTION = (640, 480)#(1280, 720)
@@ -8,7 +12,7 @@ SAMPLE_RATE = 44100
 DURATION = 1  # Short buffer duration for real-time updates
 MARGIN_WIDTH = 50
 MAX_SINE_VOLUME = 0.3
-WEBCAM_PATH = 0#"person_walk_test_low.mov"#0 #'apple_phone_low.mp4'
+WEBCAM_PATH = 1#"person_walk_test_low.mov"#0 #'apple_phone_low.mp4'
 # 'person_walk_test_HD.mp4'
 #COCO dataset. CAPS are what we want but not in dataset
 IMPORTANT_OBJECTS = ['person', 'traffic light', 'stop sign', 'WALL', 'STAIRS', 'STEP', 'OBJECTS IN WAY', 'PATH']
@@ -26,7 +30,7 @@ MODEL_NAMES = [
 IGNORE_OBJECTS = ['airplane', 'scissors', 'tie',
                  'refrigerator', 'person', 'kite', 
                  'cell phone', 'tv', 'donut',
-                 'bird', 'boat']
+                 'bird', 'boat', 'toothbrush']
 
 #pygame demo stuff
 SCREEN_WIDTH = 300
