@@ -1,5 +1,5 @@
 """
-sound_gen.py  –  queue-based sine-tone scheduler
+sound_gen.py  –  queue-based sine‑tone scheduler
 ------------------------------------------------
 • schedule_sound()      ← called by vision loop
 • Dispatcher thread pops one event at a time.
@@ -12,10 +12,11 @@ import pygame, soundfile as sf
 
 from hrtf import get_HRTF_params, apply_hrtf
 from my_constants import HRTF_DIR
+from distance_volume import volume_from_distance          # ← NEW
 
 # ───────────────────────── CONFIG ──────────────────────────
-COOLDOWN      = 2.0       # s before same obj re-announces
-DISTANCE_STEP = 0.5       # m closer ⇒ re-announce
+COOLDOWN      = 2.0       # s before same obj re‑announces
+DISTANCE_STEP = 0.5       # m closer ⇒ re‑announce
 DISPATCH_HZ   = 20        # queue polls per second
 
 SINE_LOW      = 400       # Hz normal objects
@@ -56,7 +57,7 @@ def stop_dispatcher():
 
 # ───────────────────────── DISPATCH THREAD ─────────────────
 def _dispatcher():
-    if not pygame.mixer.get_init():       # mixer re-init guard
+    if not pygame.mixer.get_init():                       # mixer re‑init guard
         pygame.mixer.init(frequency=SAMPLE_RATE, channels=2)
 
     while _running:
@@ -75,11 +76,12 @@ def _dispatcher():
         t     = np.linspace(0, DURATION, int(SAMPLE_RATE*DURATION), False)
         wave  = np.sin(2*np.pi*freq*t).astype(np.float32)
 
-        # auto-volume by distance  (simple 1/r)
-        volume = min(1.0, 1.0/(dist + 0.1))
+        # --- VOLUME BY DISTANCE (new) ---------------------------------------
+        volume = volume_from_distance(dist)              # ← single change
         wave  *= volume
+        # -------------------------------------------------------------------
 
-        # apply HRTF  (comment-out if panning not wanted yet)
+        # apply HRTF  (comment‑out if panning not wanted yet)
         hrtf_file, flipped = get_HRTF_params(y_ang, x_ang, HRTF_DIR)
         hrtf_data, hrtf_sr = sf.read(hrtf_file)
         proc = apply_hrtf(wave, SAMPLE_RATE, hrtf_data, hrtf_sr, flipped, dist)
@@ -94,7 +96,7 @@ def _dispatcher():
 # start background thread
 threading.Thread(target=_dispatcher, daemon=True).start()
 
-# ────────────────── BACK-COMPAT STUBS (Option A) ───────────
+# ────────────────── BACK‑COMPAT STUBS (Option A) ───────────
 def generate_sine_wave(frequency, duration, volume, x_angle, y_angle,
                        sample_rate=SAMPLE_RATE):
     """
