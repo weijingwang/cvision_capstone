@@ -6,13 +6,20 @@ sound_gen.py  –  queue-based sine‑tone scheduler
 • Legacy stubs (generate_sine_wave / play_sine_tone) keep old imports alive.
 """
 
-import time, threading, heapq
 import numpy as np
+from scipy.signal import square
+from my_constants import *
+import globals
+from hrtf import *
+
+import time, threading, heapq
 import pygame, soundfile as sf
 
 from hrtf import get_HRTF_params, apply_hrtf
 from my_constants import HRTF_DIR
-from distance_volume import volume_from_distance          # ← NEW
+from distance_volume import volume_from_distance  
+
+import math              # ← NEW
 
 # ───────────────────────── CONFIG ──────────────────────────
 COOLDOWN      = 2.0       # s before same obj re‑announces
