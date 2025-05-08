@@ -6,6 +6,7 @@ from torch import optim
 import torch.nn as nn
 from torch.nn.utils import clip_grad_norm_
 from torch.utils.tensorboard import SummaryWriter
+from torch.optim.lr_scheduler import LinearLR, CosineAnnealingLR, SequentialLR
 
 from data import get_data_loaders
 from config import (
@@ -20,7 +21,9 @@ from config import (
 from loss import DistillationLoss
 
 # Which layers to print grads for
-monitored = FEATURE_LAYERS + ["head"]
+#monitored = FEATURE_LAYERS + ["head"]
+monitored = ["head"]
+
 
 # Teacher factory
 from ml_depth_pro.src.depth_pro.depth_pro import (
@@ -45,6 +48,8 @@ def main():
 
     # 1) Data
     train_loader, val_loader, _ = get_data_loaders(DATA_ROOT, BATCH_SIZE)
+    num_batches = len(train_loader)
+    print(f"Number of training batches per epoch: {num_batches}")
 
     # 2) Teacher (frozen, fp16)
     t_cfg = TConfig(
@@ -82,6 +87,11 @@ def main():
         output_device=local_rank,
         find_unused_parameters=True,
     )
+
+    for name, param in student.module.named_parameters():
+       if "head" not in name:
+           param.requires_grad = False
+
     student.train()
 
     # 4) Criterion + optimizer + scheduler
@@ -95,12 +105,43 @@ def main():
             if conv.bias is not None:
                 nn.init.zeros_(conv.bias)
     
-    optimizer = optim.Adam(
-        list(student.parameters()) + list(criterion.parameters()),
-        lr=LR,
+    #optimizer = optim.Adam(
+    #    list(student.parameters()) + list(criterion.parameters()),
+    #    lr=LR,
+    #    weight_decay=WEIGHT_DECAY,
+    #)
+                
+    head_params = filter(lambda p: p.requires_grad, student.parameters())
+    optimizer = optim.SGD(
+        head_params,
+        lr=LR,               # you may need to up the LR (e.g. 1e-2)
+        momentum=0.9,
         weight_decay=WEIGHT_DECAY,
+    )            
+    #scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
+
+    warmup_epochs = 5
+
+    # linear warm-up: start at 0.1% of LR, go to full LR in warmup_epochs
+    warmup_scheduler = LinearLR(
+        optimizer,
+        start_factor=0.01,    # warm-up starts at LR * 0.001
+        end_factor=1.0,       # warms up to the full LR
+        total_iters=warmup_epochs
     )
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
+
+    # cosine decay for the rest of training
+    cosine_scheduler = CosineAnnealingLR(
+        optimizer,
+        T_max=EPOCHS - warmup_epochs
+    )
+
+    # glue them together
+    scheduler = SequentialLR(
+        optimizer,
+        schedulers=[warmup_scheduler, cosine_scheduler],
+        milestones=[warmup_epochs]
+    )
 
     # 5) TensorBoard + AMP
     writer = SummaryWriter(log_dir="runs/depth_distill")
@@ -132,10 +173,10 @@ def main():
             # backprop w/ scaling
             scaler.scale(loss).backward()
 
-            for name, p in student.named_parameters():
-                if p.grad is not None and 'upsample_latent1' in name:
-                    print(f"{name} grad norm:", p.grad.norm().item())
-                break
+            #for name, p in student.named_parameters():
+            #    if p.grad is not None and 'upsample_latent1' in name:
+            #        print(f"{name} grad norm:", p.grad.norm().item())
+            #    break
             # gradient clipping
             scaler.unscale_(optimizer)
             total_norm = clip_grad_norm_(
@@ -159,7 +200,7 @@ def main():
             global_step = epoch * len(train_loader) + batch_idx
             writer.add_scalar("Loss/total", loss.item(), global_step)
             writer.add_scalar("Loss/depth", logs['depth_loss'], global_step)
-            writer.add_scalar("Loss/feat_distill", logs['feat_loss'], global_step)
+            #writer.add_scalar("Loss/feat_distill", logs['feat_loss'], global_step)
             writer.add_scalar("LR/batch", optimizer.param_groups[0]['lr'], global_step)
 
             # Image logging every 500 batches
@@ -183,6 +224,30 @@ def main():
 
         # epoch-end logging + scheduler step
         if local_rank == 0:
+            student.module.eval()
+            total_val_loss = 0.0
+            with torch.no_grad():
+                for batch in val_loader:
+                    imgs_hr = batch['image_hr'].to(device)
+                    imgs_lr = batch['image_lr'].to(device)
+
+                    # teacher (fp16) forward
+                    teacher_feats = teacher.encoder(imgs_hr)
+                    depth_t, _ = teacher(imgs_hr)
+
+                    # student (fp32) forward
+                    student_feats = student.module.encoder(imgs_lr)
+                    depth_s, _ = student(imgs_lr)
+
+                    loss, _ = criterion(depth_s, depth_t, student_feats, teacher_feats)
+                    total_val_loss += loss.item()
+
+            avg_val_loss = total_val_loss / len(val_loader)
+            writer.add_scalar("Loss/val", avg_val_loss, epoch)
+            print(f"Epoch {epoch:02d} — Val Loss: {avg_val_loss:.4f}")
+
+            # back to train mode
+            student.module.train()
             avg = epoch_loss / len(train_loader)
             current_lr = optimizer.param_groups[0]['lr']
             print(f"Epoch {epoch:02d}/{EPOCHS} — Loss: {avg:.4f} — LR: {current_lr:.2e}")

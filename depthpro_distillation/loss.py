@@ -86,6 +86,6 @@ class DistillationLoss(nn.Module):
             logs: dict of individual loss components
         """
         dloss = self.compute_depth_loss(pred_depth, gt_depth)
-        floss = self.compute_feature_loss(student_feats, teacher_feats)
-        total = dloss + floss
-        return total, {"depth_loss": dloss.item(), "feat_loss": floss.item()}
+        #floss = self.compute_feature_loss(student_feats, teacher_feats)
+        total = dloss # + floss
+        return total, {"depth_loss": dloss.item()} #, "feat_loss": floss.item()}

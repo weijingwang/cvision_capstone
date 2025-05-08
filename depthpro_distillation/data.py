@@ -7,7 +7,7 @@ from torch.utils.data import Dataset, DataLoader, random_split, distributed, Seq
 from torchvision.transforms import Compose, Resize, ToTensor, Normalize, ConvertImageDtype
 from config import STUDENT_IMG_SIZE, TEACHER_IMG_SIZE  # e.g. 384
 
-# 1) Grab teacher img_size from the config
+# 1) Grab teacher img_size from the config  
 teacher_img_size = TEACHER_IMG_SIZE
 
 # 2) Define two transforms

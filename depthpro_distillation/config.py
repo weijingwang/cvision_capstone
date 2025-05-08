@@ -2,8 +2,8 @@
 
 # Training
 EPOCHS       = 50
-BATCH_SIZE   = 1
-LR           = 1e-2
+BATCH_SIZE   = 2
+LR           = 1e-3
 WEIGHT_DECAY = 1e-2
 
 STUDENT_IMG_SIZE = 384               # student network resolution
