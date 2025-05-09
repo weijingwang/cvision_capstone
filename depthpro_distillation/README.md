@@ -29,4 +29,20 @@ pip install tensorboard
 tensorboard --logdir runs/depth_distill --port 6007
 ```
 
+Optionally, to do a smoke test, add the arg
+```bash
+torchrun --nproc_per_node=2 train.py --smoke-test
+```
+
+To use tmux to keep training going at all times, use
+```bash
+tmux new -s myrun
+Ctrl-b then %
+run train command
+Ctrl-b then o
+run logging command
+Ctrl-b then d #to detach
+tmux attach -t myrun #to reattach
+```
+
 WARNING: this needs revision! the student depth map only produces a black image. Maybe experiment with warming up the feature distillation weight, experiment with lower LR (for the projector parameters). Look at depth ranges to see if it's producing anything. I'd also recommend looking through the student_encoder, student_vit_factory, etc to get a feel for how the source code was modified (and if you see any bugs)
