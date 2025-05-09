@@ -1,7 +1,7 @@
 # config.py
 
 # Training
-EPOCHS       = 50
+EPOCHS       = 51
 BATCH_SIZE   = 2
 LR           = 1e-3
 WEIGHT_DECAY = 1e-2

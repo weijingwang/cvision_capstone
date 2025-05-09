@@ -7,6 +7,7 @@ import torch.nn as nn
 from torch.nn.utils import clip_grad_norm_
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import LinearLR, CosineAnnealingLR, SequentialLR
+import argparse
 
 from data import get_data_loaders
 from config import (
@@ -40,6 +41,11 @@ from student_depth_model.student_depth_pro import (
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--smoke-test", action="store_true",
+                        help="run exactly one batch/epoch then exit")
+    args = parser.parse_args()
+
     # 0) DDP init
     local_rank = int(os.environ.get('LOCAL_RANK', 0))
     dist.init_process_group(backend='nccl')
@@ -125,7 +131,7 @@ def main():
     # linear warm-up: start at 0.1% of LR, go to full LR in warmup_epochs
     warmup_scheduler = LinearLR(
         optimizer,
-        start_factor=0.01,    # warm-up starts at LR * 0.001
+        start_factor=0.1,    # warm-up starts at LR * 0.001
         end_factor=1.0,       # warms up to the full LR
         total_iters=warmup_epochs
     )
@@ -152,6 +158,11 @@ def main():
         train_loader.sampler.set_epoch(epoch)
         epoch_loss = 0.0
         for batch_idx, batch in enumerate(train_loader):
+
+            if args.smoke_test:
+                print("Smoke test: 1 train batch completed successfully.")
+                break
+
             imgs_hr = batch['image_hr'].to(device)
             imgs_lr = batch['image_lr'].to(device)
 
@@ -159,8 +170,9 @@ def main():
             with torch.cuda.amp.autocast():
                 # teacher fp16 forward
                 with torch.no_grad():
-                    teacher_feats = teacher.encoder(imgs_hr)
-                    depth_t, _ = teacher(imgs_hr)
+                    hr16 = imgs_hr.half()   
+                    teacher_feats = teacher.encoder(hr16)
+                    depth_t, _ = teacher(hr16)
                 # student forward
                 student_feats = student.module.encoder(imgs_lr)
                 depth_s, _ = student(imgs_lr)
@@ -228,6 +240,9 @@ def main():
             total_val_loss = 0.0
             with torch.no_grad():
                 for batch in val_loader:
+                    if args.smoke_test:
+                        print("Smoke test: 1 val batch completed successfully.")
+                        break
                     imgs_hr = batch['image_hr'].to(device)
                     imgs_lr = batch['image_lr'].to(device)
 
