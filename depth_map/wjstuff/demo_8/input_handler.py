@@ -1,16 +1,3 @@
-"""Handle inputs like an interrupt
-MY STATES input guide
-[0] Main state
-    - Continuously detect objects
-        - If dangerous object detected lead user away with warning sound/drone
-    - Announce important objects (stairs, walls)
-
-    [1] Voice activated state
-        - Else: Announce all the detected objects with appropriate volume and location
-        - If say specific object: Play radar-like ping sound to lead user to object
-
-"""
-
 import globals
 from my_constants import *
 from utils import *
@@ -30,6 +17,8 @@ def input_listener():  # Function to listen for specific key inputs
                 if globals.state == 0:  # main state 0
                     if user_input == '0':
                         globals.state = 0
+                        # Reset all sounded_already flags to False so objects will be announced again
+                        reset_all_sounded_flags()
                         print_notification("you're in the main state 0!")
                     elif user_input == '1':
                         globals.state = 1
@@ -44,6 +33,8 @@ def input_listener():  # Function to listen for specific key inputs
                     if user_input == '0':
                         print_notification("cancelling... returning to main state 0!")
                         globals.state = 0
+                        # Reset all sounded_already flags when returning to main state
+                        reset_all_sounded_flags()
                         
                     elif user_input == '':
                         print_notification('listing all the objects... returning to main state 0!')
@@ -84,11 +75,20 @@ def input_listener():  # Function to listen for specific key inputs
                         globals.state = 0
                         globals.current_target_to_guide = None
                         globals.is_guiding = False
+                        # Reset all sounded_already flags when cancelling guidance
+                        reset_all_sounded_flags()
                         print_notification("cancelling... returning to main state 0!")
                         print_menu()
 
         except Exception as e:
             print(f"Error: {e}")
+
+
+def reset_all_sounded_flags():
+    """Reset all sounded_already flags to False in objects_data dictionary"""
+    for track_id in globals.objects_data:
+        if 'sounded_already' in globals.objects_data[track_id]:
+            globals.objects_data[track_id]['sounded_already'] = False
             
 def print_available_objects(objects_data):
     """Print available objects for tracking in a clear format"""

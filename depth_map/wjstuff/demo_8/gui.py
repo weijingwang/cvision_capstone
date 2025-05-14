@@ -2,6 +2,7 @@ import pygame
 import time
 from my_constants import *
 import globals
+from utils import *
 
 
 def quit_app():
@@ -38,11 +39,16 @@ def handle_gui_events(square_rect, last_click_time):
 def render_gui(screen, square_rect, text_surface, text_rect, objects, button_is_pressed, is_double_clicked, clock):
     # Handle double click
     if is_double_clicked:
-        print("LISTEN FOR VOICE INSTRUCTIONS")
+        # print("LISTEN FOR VOICE INSTRUCTIONS")
+        globals.state = 1
+        print_notification("voice mode (state 1): enter ID to guide to (number for objects or 'a123' for ArUco marker 123)")
         is_double_clicked = False
 
     # Handle button press
     if button_is_pressed:
+        for track_id in globals.objects_data:
+            if 'sounded_already' in globals.objects_data[track_id]:
+                globals.objects_data[track_id]['sounded_already'] = False
         print(f"{objects}")
 
     # Render the screen

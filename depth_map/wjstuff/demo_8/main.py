@@ -168,7 +168,7 @@ if __name__ == '__main__':
                     
                     # Apply volume adjustment based on depth and guiding state
                     base_volume = sigmoid_volume(obj_data['depth'], steepness=SIG_STEEP, midpoint=SIG_MID)
-                    audio_data *= base_volume * volume_multiplier  # Reduce volume if guiding
+                    audio_data *= base_volume * 1# Reduce volume if guiding
                     
                     pygame_audio = convert_audio_format_to_pygame(audio_data, SAMPLE_RATE, SAMPLE_RATE)
                     pygame_audio = np.ascontiguousarray(pygame_audio, dtype=np.int16)
@@ -210,7 +210,7 @@ if __name__ == '__main__':
                         
                         # Apply volume adjustment based on depth and guiding state
                         base_volume = sigmoid_volume(obj_data['depth'], steepness=SIG_STEEP, midpoint=SIG_MID)
-                        audio_data *= base_volume * volume_multiplier  # Reduce volume if guiding
+                        audio_data *= base_volume * volume_multiplier # Reduce volume if guiding
                         
                         pygame_audio = convert_audio_format_to_pygame(audio_data, SAMPLE_RATE, SAMPLE_RATE)
                         pygame_audio = np.ascontiguousarray(pygame_audio, dtype=np.int16)
@@ -318,6 +318,7 @@ if __name__ == '__main__':
             print_block_letter_art("Bye guys")
             if cap.isOpened():  # Check if the capture object is open
                 cap.release()  # Release the video capture
+            pygame.quit()
             quit_app()
 
 # end of program :)

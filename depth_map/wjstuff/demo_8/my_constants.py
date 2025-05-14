@@ -1,8 +1,8 @@
 """My constants"""
 
 # sigmoid volume parameters
-SIG_MID = 2.5 # where sigmoid midpoint in meters (play mid volume)
-SIG_STEEP = 3 # how steep the sigmoid is
+SIG_MID = 1.6 # where sigmoid midpoint in meters (play mid volume)
+SIG_STEEP = 7 # how steep the sigmoid is
 
 # Add to my_constants.py if not already there
 DEPTH_MAP_FRAME_SKIP = 25  # Process depth map every N frames
@@ -59,7 +59,7 @@ PYGAME_FPS = 60
 SQUARE_SIZE = 200
 SQUARE_X = (SCREEN_WIDTH - SQUARE_SIZE) // 2
 SQUARE_Y = (SCREEN_HEIGHT - SQUARE_SIZE) // 2
-DOUBLE_CLICK_THRESHOLD = 0.3  # 300 ms for a double click
+DOUBLE_CLICK_THRESHOLD = 0.25  # 250 ms for a double click
 
 # Will HRTF stuff
 HRTF_DIR = "./HRTF/MIT/diffuse"
