@@ -190,24 +190,40 @@ def detect_aruco_markers(frame, raw_depth, aruco_detector, depth_to_plot, cached
             # Calculate depth
             avg_depth = process_depth_mask(raw_depth, marker_mask, frame.shape[:2])
             
-            # Draw bounding box
-            cv2.rectangle(depth_to_plot, (x_min, y_min), (x_max, y_max), (0, 255, 255), 2)
+            # Check if this ArUco marker is dangerous (using same criteria as other objects)
+            class_name = f"ArUco_{marker_id}"
+            is_dangerous = am_i_dangerous(avg_depth, class_name)
+            
+            # Set border color based on danger status
+            border_color = (0, 0, 255) if is_dangerous else (0, 255, 255)
+            
+            # Draw bounding box with appropriate color
+            cv2.rectangle(depth_to_plot, (x_min, y_min), (x_max, y_max), border_color, 2)
             
             # Add marker ID and depth info
             label = f"ArUco ID: {marker_id} {avg_depth:.2f}m"
             cv2.putText(depth_to_plot, label, (x_min, y_min - 10),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, border_color, 2)
+            
+            # Draw the mask with appropriate color
+            colored_mask = np.zeros_like(frame)
+            if is_dangerous:
+                colored_mask[marker_mask > 0] = [0, 0, 255]  # Red mask for dangerous markers
+            else:
+                colored_mask[marker_mask > 0] = [0, 255, 255]  # Original yellow mask
+            
+            depth_to_plot = cv2.addWeighted(depth_to_plot, 1, colored_mask, 0.8, 0)
             
             # Store object information
             globals.objects_data[track_id] = {
-                'class': f"ArUco_{marker_id}",
+                'class': class_name,
                 'depth': float(avg_depth),
                 'sounded_already': globals.objects_data.get(track_id, {}).get('sounded_already', False),
                 'confidence': 1.0,  # ArUco markers are deterministic
                 'mask_vis': marker_mask,
                 'x_angle': float(x_angle),
                 'y_angle': float(y_angle),
-                'isDangerous': False,  # By default, ArUco markers are not considered dangerous
+                'isDangerous': is_dangerous,  # Apply danger criteria to ArUco markers
                 'marker_id': int(marker_id)  # Store the marker ID explicitly
             }
     

@@ -12,7 +12,7 @@ SAMPLE_RATE = 44100
 DURATION = 1  # Short buffer duration for real-time updates
 MARGIN_WIDTH = 50
 MAX_SINE_VOLUME = 0.3
-WEBCAM_PATH = 0#"person_walk_test_low.mov"#0 #'apple_phone_low.mp4'
+WEBCAM_PATH = 1#"person_walk_test_low.mov"#0 #'apple_phone_low.mp4'
 # 'person_walk_test_HD.mp4'
 #COCO dataset. CAPS are what we want but not in dataset
 IMPORTANT_OBJECTS = ['person', 'traffic light', 'stop sign', 'WALL', 'STAIRS', 'STEP', 'OBJECTS IN WAY', 'PATH']
