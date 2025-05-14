@@ -9,6 +9,7 @@ from my_constants import *  # Make sure DEPTH_MAP_FRAME_SKIP is defined here
 from webcam import *
 from gui import *
 from hrtf import *
+from darren_distance_volume import *
 
 pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=2)
 pygame.init()
@@ -167,7 +168,7 @@ if __name__ == '__main__':
                     audio_data = apply_hrtf(audio_data, SAMPLE_RATE, hrtf_input, hrtf_fs, sound_is_flipped, distance=1)
                     
                     # Apply volume adjustment based on depth and guiding state
-                    base_volume = sigmoid_volume(obj_data['depth'], steepness=SIG_STEEP, midpoint=SIG_MID)
+                    base_volume = volume_from_distance(obj_data['depth'])#sigmoid_volume(obj_data['depth'], steepness=SIG_STEEP, midpoint=SIG_MID)
                     audio_data *= base_volume * 1# Reduce volume if guiding
                     
                     pygame_audio = convert_audio_format_to_pygame(audio_data, SAMPLE_RATE, SAMPLE_RATE)
@@ -209,7 +210,7 @@ if __name__ == '__main__':
                         audio_data = apply_hrtf(audio_data, SAMPLE_RATE, hrtf_input, hrtf_fs, sound_is_flipped, distance=1)
                         
                         # Apply volume adjustment based on depth and guiding state
-                        base_volume = sigmoid_volume(obj_data['depth'], steepness=SIG_STEEP, midpoint=SIG_MID)
+                        base_volume = volume_from_distance(obj_data['depth']) #sigmoid_volume(obj_data['depth'], steepness=SIG_STEEP, midpoint=SIG_MID)
                         audio_data *= base_volume * volume_multiplier # Reduce volume if guiding
                         
                         pygame_audio = convert_audio_format_to_pygame(audio_data, SAMPLE_RATE, SAMPLE_RATE)

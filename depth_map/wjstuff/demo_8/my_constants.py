@@ -10,7 +10,7 @@ ARUCO_FRAME_SKIP = 1  # Process ArUco detection every N frames (can be different
 ARUCO_PERSISTENCE_FRAMES = 5  # Number of frames to keep ArUco markers in memory after they disappear
 
 DANGER_METER = 1 # when its considered dangerous
-ARRIVAL_METERS = 1.3 # in tracking mode, when u arrive.
+ARRIVAL_METERS = 1.2 # in tracking mode, when u arrive.
 WEBCAM_RESOLUTION = (640, 480)#(1280, 720)
 SAMPLE_RATE = 44100
 DURATION = 1  # Short buffer duration for real-time updates
