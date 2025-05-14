@@ -636,3 +636,15 @@ depth_distillation/checkpoints/
 depth_distillation/runs/
 depth_distillation/*.pt
 depth_distillation/*.pth
+depth_map/wjstuff/demo_8/depth_anything_v2/util/transform.py
+depth_map/wjstuff/demo_8/depth_anything_v2/util/blocks.py
+depth_map/wjstuff/demo_8/depth_anything_v2/dpt.py
+depth_map/wjstuff/demo_8/depth_anything_v2/dinov2_layers/swiglu_ffn.py
+depth_map/wjstuff/demo_8/depth_anything_v2/dinov2_layers/patch_embed.py
+depth_map/wjstuff/demo_8/depth_anything_v2/dinov2_layers/mlp.py
+depth_map/wjstuff/demo_8/depth_anything_v2/dinov2_layers/layer_scale.py
+depth_map/wjstuff/demo_8/depth_anything_v2/dinov2_layers/drop_path.py
+depth_map/wjstuff/demo_8/depth_anything_v2/dinov2_layers/block.py
+depth_map/wjstuff/demo_8/depth_anything_v2/dinov2_layers/attention.py
+depth_map/wjstuff/demo_8/depth_anything_v2/dinov2_layers/__init__.py
+depth_map/wjstuff/demo_8/depth_anything_v2/dinov2.py
