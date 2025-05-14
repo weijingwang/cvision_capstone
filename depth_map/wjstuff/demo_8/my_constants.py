@@ -1,12 +1,16 @@
 """My constants"""
 
+# sigmoid volume parameters
+SIG_MID = 2.5 # where sigmoid midpoint in meters (play mid volume)
+SIG_STEEP = 3 # how steep the sigmoid is
 
 # Add to my_constants.py if not already there
-DEPTH_MAP_FRAME_SKIP = 50  # Process depth map every N frames
+DEPTH_MAP_FRAME_SKIP = 25  # Process depth map every N frames
 ARUCO_FRAME_SKIP = 1  # Process ArUco detection every N frames (can be different from depth map skip)
 ARUCO_PERSISTENCE_FRAMES = 5  # Number of frames to keep ArUco markers in memory after they disappear
 
-ARRIVAL_METERS = 1
+DANGER_METER = 1 # when its considered dangerous
+ARRIVAL_METERS = 1.3 # in tracking mode, when u arrive.
 WEBCAM_RESOLUTION = (640, 480)#(1280, 720)
 SAMPLE_RATE = 44100
 DURATION = 1  # Short buffer duration for real-time updates
@@ -27,10 +31,22 @@ MODEL_NAMES = [
     'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell phone', 'microwave', 'oven',
     'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush'
 ]
-IGNORE_OBJECTS = ['airplane', 'scissors', 'tie',
-                 'refrigerator', 'person', 'kite', 
-                 'cell phone', 'tv', 'donut',
-                 'bird', 'boat', 'toothbrush']
+
+# Define objects to always ignore regardless of danger level
+ALWAYS_IGNORE = [
+    'airplane', 'boat', 'traffic light',
+    'fire hydrant', 'stop sign', 'parking meter', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow',
+    'elephant', 'bear', 'zebra', 'giraffe',  'tie',  'frisbee',
+    'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard', 'tennis racket', 
+    'wine glass', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange',
+    'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake',  'potted plant',
+     'mouse', 'remote', 'keyboard',  'microwave', 'oven',
+    'toaster', 'sink', 'refrigerator',  'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush'
+]
+
+# ignore unless too close
+IGNORE_OBJECTS = ['person', 'chair']
+
 
 #pygame demo stuff
 SCREEN_WIDTH = 300

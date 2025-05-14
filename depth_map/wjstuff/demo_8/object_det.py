@@ -46,7 +46,7 @@ def init_aruco_detector():
     return detect_func
 
 def am_i_dangerous(depth, classname):
-    if depth < 1 or classname in DANGEROUS_OBJECTS:
+    if depth < DANGER_METER or classname in DANGEROUS_OBJECTS:
         dangerous = True
     else: dangerous = False
     return dangerous
@@ -225,6 +225,7 @@ def detect_aruco_markers(frame, raw_depth, aruco_detector, depth_to_plot, cached
     return depth_to_plot, detected_aruco_ids
 
 def process_yolo_results(frame, model, results, raw_depth, depth_to_plot, tracker, aruco_detector=None):
+    
     # Process ArUco markers if detector is provided
     if aruco_detector is not None:
         # Create a fresh copy for ArUco visualization to avoid accumulating boxes
@@ -267,6 +268,10 @@ def process_yolo_results(frame, model, results, raw_depth, depth_to_plot, tracke
         class_id = detections.class_id[i]
         class_name = model.names[class_id]
         confidence = detections.confidence[i]
+        
+        # Always skip objects in ALWAYS_IGNORE list regardless of danger level
+        if class_name in ALWAYS_IGNORE:
+            continue
         
         # Get segmentation mask for this object
         if hasattr(results, 'masks') and results.masks is not None:
