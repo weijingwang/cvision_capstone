@@ -10,22 +10,8 @@ import globals
 from my_constants import *
 import supervision as sv
 
-def init_objectDet(exclude_names):
+def init_objectDet():
     model = YOLO('yolov8n-seg.pt')
-
-    # Get all class names and IDs
-    class_name_to_id = {name: id for id, name in model.names.items()}
-
-    # Classes to exclude
-    # exclude_names = ['airplane', 'kite', 'bear']
-    exclude_ids = [class_name_to_id[name] for name in exclude_names if name in class_name_to_id]
-
-    # Create list of classes to keep
-    all_class_ids = list(model.names.keys())
-    include_ids = [i for i in all_class_ids if i not in exclude_ids]
-
-    # Save the include_ids in the model for later use
-    model.allowed_classes = include_ids
     return model
 
 def init_aruco_detector():
@@ -265,7 +251,6 @@ def process_yolo_results(frame, model, results, raw_depth, depth_to_plot, tracke
 
     # Process each detection
     for i in range(len(detections)):
-        # Rest of your code remains the same...
         # Get box coordinates
         box = detections.xyxy[i].astype(int)
         x1, y1, x2, y2 = map(int, box)  # Convert to integers
@@ -293,6 +278,10 @@ def process_yolo_results(frame, model, results, raw_depth, depth_to_plot, tracke
             mask_vis = None
         
         isDangerous = am_i_dangerous(avg_depth, class_name)
+        
+        # Skip objects in IGNORE_OBJECTS list unless they're dangerous
+        if class_name in IGNORE_OBJECTS and not isDangerous:
+            continue
 
         # DRAWING STUFF MASKS INDIVIDUALLY
         # Create visualization mask

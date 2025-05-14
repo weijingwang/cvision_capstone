@@ -10,7 +10,6 @@ from webcam import *
 from gui import *
 from hrtf import *
 
-
 pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=2)
 pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -31,7 +30,7 @@ if __name__ == '__main__':
     print("Loaded depthmap...")
 
     # Initialize YOLOv8
-    model = init_objectDet(IGNORE_OBJECTS)  # Use the appropriate YOLOv8 model variant (n, s, m, l, x)
+    model = init_objectDet()  # Use the appropriate YOLOv8 model variant (n, s, m, l, x)
     print("Loaded YOLO...")
 
     # Initialize ArUco detector
@@ -58,22 +57,6 @@ if __name__ == '__main__':
     print("Loaded targeting audio threat...")
 
     MODEL_NAMES_AUDIO = create_audio_dictionary('classnames_audio')
-    
-    # # Make sure you have an audio file for ArUco markers
-    # # If not already in your audio dictionary, add a default sound for ArUco markers
-    # if 'aruco_marker' not in MODEL_NAMES_AUDIO:
-    #     # Use a default sound or create one specifically for ArUco markers
-    #     # For example, you could use the sound for a similar object or create a new one
-    #     # This is just an example - replace with an appropriate sound
-    #     if 'marker' in MODEL_NAMES_AUDIO:
-    #         MODEL_NAMES_AUDIO['aruco_marker'] = MODEL_NAMES_AUDIO['marker']
-    #     else:
-    #         # Use any existing sound as a fallback - replace with something appropriate
-    #         first_key = next(iter(MODEL_NAMES_AUDIO))
-    #         MODEL_NAMES_AUDIO['aruco_marker'] = MODEL_NAMES_AUDIO[first_key]
-    
-    # data, samplerate = MODEL_NAMES_AUDIO['bowl']
-    # print(data, samplerate)
 
     # Initialize webcam
     webcam_data = webcam_init()
@@ -126,7 +109,7 @@ if __name__ == '__main__':
 
         # YOLO inference and time it
         inference_start_time = time.time()
-        results = model(raw_frame, verbose=False, classes=model.allowed_classes)[0]
+        results = model(raw_frame, verbose=False)[0] 
 
         # Process ArUco markers only on specific frames
         detected_aruco_ids = []
