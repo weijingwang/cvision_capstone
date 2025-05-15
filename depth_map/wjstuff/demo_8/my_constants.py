@@ -2,7 +2,7 @@
 
 # sigmoid volume parameters
 SIG_MID = 1.6 # where sigmoid midpoint in meters (play mid volume)
-SIG_STEEP = 7 # how steep the sigmoid is
+SIG_STEEP = 5 # how steep the sigmoid is
 
 # Add to my_constants.py if not already there
 DEPTH_MAP_FRAME_SKIP = 25  # Process depth map every N frames

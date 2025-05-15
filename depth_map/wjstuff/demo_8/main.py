@@ -168,7 +168,8 @@ if __name__ == '__main__':
                     audio_data = apply_hrtf(audio_data, SAMPLE_RATE, hrtf_input, hrtf_fs, sound_is_flipped, distance=1)
                     
                     # Apply volume adjustment based on depth and guiding state
-                    base_volume = volume_from_distance(obj_data['depth'])#sigmoid_volume(obj_data['depth'], steepness=SIG_STEEP, midpoint=SIG_MID)
+                    # base_volume = volume_from_distance(obj_data['depth'])
+                    base_volume = sigmoid_volume(obj_data['depth'], steepness=SIG_STEEP, midpoint=SIG_MID)
                     audio_data *= base_volume * 1# Reduce volume if guiding
                     
                     pygame_audio = convert_audio_format_to_pygame(audio_data, SAMPLE_RATE, SAMPLE_RATE)
@@ -210,7 +211,8 @@ if __name__ == '__main__':
                         audio_data = apply_hrtf(audio_data, SAMPLE_RATE, hrtf_input, hrtf_fs, sound_is_flipped, distance=1)
                         
                         # Apply volume adjustment based on depth and guiding state
-                        base_volume = volume_from_distance(obj_data['depth']) #sigmoid_volume(obj_data['depth'], steepness=SIG_STEEP, midpoint=SIG_MID)
+                        # base_volume = volume_from_distance(obj_data['depth'])
+                        base_volume = sigmoid_volume(obj_data['depth'], steepness=SIG_STEEP, midpoint=SIG_MID)
                         audio_data *= base_volume * volume_multiplier # Reduce volume if guiding
                         
                         pygame_audio = convert_audio_format_to_pygame(audio_data, SAMPLE_RATE, SAMPLE_RATE)
