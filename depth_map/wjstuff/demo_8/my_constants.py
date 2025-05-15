@@ -41,11 +41,14 @@ ALWAYS_IGNORE = [
     'wine glass', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange',
     'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake',  'potted plant',
      'mouse', 'remote', 'keyboard',  'microwave', 'oven',
-    'toaster', 'sink', 'refrigerator',  'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush'
+    'toaster', 'sink', 'refrigerator',  'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush',
+    'book', 'laptop', 'cell phone' # tempo?
 ]
 
 # ignore unless too close
-IGNORE_OBJECTS = ['person', 'chair']
+IGNORE_OBJECTS = ['person', 'chair',
+                  'tv' # temp
+                  ]
 
 
 #pygame demo stuff
