@@ -37,7 +37,7 @@ class DualResDataset(Dataset):
         lr = lr_transform(img)   # [3, 384, 384]
         return {"image_hr": hr, "image_lr": lr}
 
-def get_data_loaders(root_dir, batch_size, val_frac=0.1, test_frac=0.1, seed=42):
+def get_data_loaders(root_dir, batch_size, train_frac =1.0, val_frac=0.1, test_frac=0.1, seed=42):
     full = DualResDataset(root_dir)
     n = len(full)
     n_val  = int(n * val_frac)
@@ -46,6 +46,14 @@ def get_data_loaders(root_dir, batch_size, val_frac=0.1, test_frac=0.1, seed=42)
     train_ds, val_ds, test_ds = random_split(
         full, [n_train, n_val, n_test],
         generator=torch.Generator().manual_seed(seed)
+    )
+
+    if train_frac < 1.0:
+        n_small = int(len(train_ds) * train_frac)
+        train_ds, _ = random_split(
+            train_ds,
+            [n_small, len(train_ds) - n_small],
+            generator=torch.Generator().manual_seed(seed + 1)
     )
 
     def collate_fn(batch):

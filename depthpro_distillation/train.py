@@ -8,6 +8,7 @@ from torch.nn.utils import clip_grad_norm_
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import LinearLR, CosineAnnealingLR, SequentialLR
 import argparse
+from datetime import timedelta
 
 from data import get_data_loaders
 from config import (
@@ -44,16 +45,18 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--smoke-test", action="store_true",
                         help="run exactly one batch/epoch then exit")
+    parser.add_argument("--save-every", type=int, default=5,
+                         help="save a checkpoint every N epochs")
     args = parser.parse_args()
 
     # 0) DDP init
     local_rank = int(os.environ.get('LOCAL_RANK', 0))
-    dist.init_process_group(backend='nccl')
+    dist.init_process_group(backend='nccl', timeout=timedelta(minutes=30))
     torch.cuda.set_device(local_rank)
     device = torch.device(f"cuda:{local_rank}")
 
     # 1) Data
-    train_loader, val_loader, _ = get_data_loaders(DATA_ROOT, BATCH_SIZE)
+    train_loader, val_loader, _ = get_data_loaders(DATA_ROOT, BATCH_SIZE, 1.00, 0.001)
     num_batches = len(train_loader)
     print(f"Number of training batches per epoch: {num_batches}")
 
@@ -94,10 +97,14 @@ def main():
         find_unused_parameters=True,
     )
 
+    #head_params = []
+    #other_params = []
     for name, param in student.module.named_parameters():
        if "head" not in name:
            param.requires_grad = False
-
+           #other_params.append(param)
+       #else: 
+           #head_params.append(param)
     student.train()
 
     # 4) Criterion + optimizer + scheduler
@@ -118,6 +125,7 @@ def main():
     #)
                 
     head_params = filter(lambda p: p.requires_grad, student.parameters())
+    print(head_params)
     optimizer = optim.SGD(
         head_params,
         lr=LR,               # you may need to up the LR (e.g. 1e-2)
@@ -131,7 +139,7 @@ def main():
     # linear warm-up: start at 0.1% of LR, go to full LR in warmup_epochs
     warmup_scheduler = LinearLR(
         optimizer,
-        start_factor=0.1,    # warm-up starts at LR * 0.001
+        start_factor=0.01,    # warm-up starts at LR * 0.001
         end_factor=1.0,       # warms up to the full LR
         total_iters=warmup_epochs
     )
@@ -139,19 +147,21 @@ def main():
     # cosine decay for the rest of training
     cosine_scheduler = CosineAnnealingLR(
         optimizer,
-        T_max=EPOCHS - warmup_epochs
+        T_max=EPOCHS #- warmup_epochs
     )
 
     # glue them together
-    scheduler = SequentialLR(
-        optimizer,
-        schedulers=[warmup_scheduler, cosine_scheduler],
-        milestones=[warmup_epochs]
-    )
+    #scheduler = SequentialLR(
+    #    optimizer,
+    #    schedulers=[warmup_scheduler, cosine_scheduler],
+    #    milestones=[warmup_epochs]
+    #)
+
+    scheduler = cosine_scheduler
 
     # 5) TensorBoard + AMP
     writer = SummaryWriter(log_dir="runs/depth_distill")
-    scaler = torch.cuda.amp.GradScaler()
+    scaler = torch.cuda.amp.GradScaler(init_scale = 2**16)
 
     # 6) Training
     for epoch in range(EPOCHS):
@@ -170,7 +180,7 @@ def main():
             with torch.cuda.amp.autocast():
                 # teacher fp16 forward
                 with torch.no_grad():
-                    hr16 = imgs_hr.half()   
+                    hr16 = imgs_hr#.half()   
                     teacher_feats = teacher.encoder(hr16)
                     depth_t, _ = teacher(hr16)
                 # student forward
@@ -185,31 +195,43 @@ def main():
             # backprop w/ scaling
             scaler.scale(loss).backward()
 
-            #for name, p in student.named_parameters():
-            #    if p.grad is not None and 'upsample_latent1' in name:
-            #        print(f"{name} grad norm:", p.grad.norm().item())
-            #    break
+            
             # gradient clipping
             scaler.unscale_(optimizer)
-            total_norm = clip_grad_norm_(
-                student.parameters(), max_norm=1.0
-            )
-            writer.add_scalar("GradNorm/clipped", total_norm, epoch * len(train_loader) + batch_idx)
+            #total_norm = clip_grad_norm_(
+            #    student.parameters(), max_norm=5.0
+            #)
 
             # monitored grads
-            print(f"–– monitored gradients (epoch {epoch}, batch {batch_idx}) ––")
+            global_step = epoch * len(train_loader) + batch_idx
+            total_norm_sq = 0.0
             for name, p in student.module.named_parameters():
-                if p.grad is None: continue
-                if any(m in name for m in monitored):
-                    print(f"{name:50s} | grad_mean = {p.grad.abs().mean().item():.2e}")
-            print("---------------------------")
+                if p.grad is None or not any(m in name for m in monitored):
+                    continue
+
+                # compute per-layer stats
+                grad = p.grad.detach()
+                mean = grad.abs().mean().item()
+                norm = grad.norm(2).item()
+                total_norm_sq += norm**2
+
+                # write scalar
+                writer.add_scalar(f"GradNorm/{name}", norm, global_step)
+
+               
+
+                # aligned print
+                print(f"{name:50s} | mean = {mean:8.2e} | norm = {norm:8.2e} | loss = {loss.item():8.2e}")
+
+            # total norm
+            total_norm = total_norm_sq**0.5
+            writer.add_scalar("GradNorm/total", total_norm, global_step)
 
             scaler.step(optimizer)
             scaler.update()
             epoch_loss += loss.item()
 
             # TensorBoard scalars
-            global_step = epoch * len(train_loader) + batch_idx
             writer.add_scalar("Loss/total", loss.item(), global_step)
             writer.add_scalar("Loss/depth", logs['depth_loss'], global_step)
             #writer.add_scalar("Loss/feat_distill", logs['feat_loss'], global_step)
@@ -238,7 +260,7 @@ def main():
         if local_rank == 0:
             student.module.eval()
             total_val_loss = 0.0
-            with torch.no_grad():
+            with torch.no_grad(), torch.cuda.amp.autocast():
                 for batch in val_loader:
                     if args.smoke_test:
                         print("Smoke test: 1 val batch completed successfully.")
@@ -247,8 +269,9 @@ def main():
                     imgs_lr = batch['image_lr'].to(device)
 
                     # teacher (fp16) forward
-                    teacher_feats = teacher.encoder(imgs_hr)
-                    depth_t, _ = teacher(imgs_hr)
+                    hr16 = imgs_hr#.half()
+                    teacher_feats = teacher.encoder(hr16)
+                    depth_t, _ = teacher(hr16)
 
                     # student (fp32) forward
                     student_feats = student.module.encoder(imgs_lr)
@@ -268,7 +291,7 @@ def main():
             print(f"Epoch {epoch:02d}/{EPOCHS} — Loss: {avg:.4f} — LR: {current_lr:.2e}")
             writer.add_scalar("Epoch/loss", avg, epoch)
             writer.add_scalar("Epoch/lr", current_lr, epoch)
-            if epoch % 5 == 0:
+            if epoch % args.save_every == 0:
                 ckpt = f"checkpoints/student_epoch{epoch}.pt"
                 torch.save(student.module.state_dict(), ckpt)
                 print(f"Saved checkpoint: {ckpt}")

@@ -20,7 +20,8 @@ class DistillationLoss(nn.Module):
             nn.Conv2d(ct, cs, kernel_size=1, bias=False)
             for ct, cs in zip(teacher_channels, student_channels)
         ])
-        self.depth_crit = nn.MSELoss()
+        #self.depth_crit = nn.MSELoss()
+        self.depth_crit = nn.L1Loss()
 
     def compute_depth_loss(
         self,
@@ -39,7 +40,9 @@ class DistillationLoss(nn.Module):
                 align_corners=False,
             )
         assert pred_depth.shape == gt_depth.shape
-        return self.depth_crit(pred_depth, gt_depth) * DEPTH_LOSS_WEIGHT
+        log_pred = torch.log(pred_depth + 1e-6)
+        log_gt   = torch.log(gt_depth   + 1e-6)
+        return self.depth_crit(log_pred, log_gt) * DEPTH_LOSS_WEIGHT
 
     def compute_feature_loss(
         self,
