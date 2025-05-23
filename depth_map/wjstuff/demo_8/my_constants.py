@@ -5,9 +5,11 @@ SIG_MID = 1.6 # where sigmoid midpoint in meters (play mid volume)
 SIG_STEEP = 5 # how steep the sigmoid is
 
 # Add to my_constants.py if not already there
-DEPTH_MAP_FRAME_SKIP = 25  # Process depth map every N frames
+DEPTH_MAP_FRAME_SKIP = 5  # Process depth map every N frames
 ARUCO_FRAME_SKIP = 1  # Process ArUco detection every N frames (can be different from depth map skip)
 ARUCO_PERSISTENCE_FRAMES = 5  # Number of frames to keep ArUco markers in memory after they disappear
+
+
 
 DANGER_METER = 1 # when its considered dangerous
 ARRIVAL_METERS = 1.2 # in tracking mode, when u arrive.
@@ -72,10 +74,5 @@ HRTF_DIR = "./HRTF/MIT/diffuse"
 
 # ASCII characters from dark to light
 ASCII_CHARS = "@%#*+=-:. "
-
-# Add to my_constants.py if not already there
-DEPTH_MAP_FRAME_SKIP = 5  # Process depth map every N frames
-ARUCO_FRAME_SKIP = 1  # Process ArUco detection every N frames (can be different from depth map skip)
-ARUCO_PERSISTENCE_FRAMES = 5  # Number of frames to keep ArUco markers in memory after they disappear
 
 
