@@ -650,3 +650,6 @@ depth_map/wjstuff/demo_8/depth_anything_v2/dinov2_layers/__init__.py
 depth_map/wjstuff/demo_8/depth_anything_v2/dinov2.py
 depth_map/wjstuff/demo_8/sort/
 depth_map/wjstuff/demo_8/DA2/
+depth_map/wjstuff/adams_demos/depth_map/DA2/
+depth_map/wjstuff/demo_9/DA2/
+depth_map/wjstuff/demo_9/Depth-Anything-V2/
