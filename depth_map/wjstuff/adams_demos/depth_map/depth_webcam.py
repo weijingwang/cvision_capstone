@@ -14,7 +14,7 @@ print("Loaded depthmap...")
 
 # Initialize webcam
 cmap = matplotlib.colormaps.get_cmap('gray')
-cap = cv2.VideoCapture(0)  # webcam
+cap = cv2.VideoCapture(1)  # webcam
 if not cap.isOpened():
     print("Error: Could not open webcam.")
     exit()
