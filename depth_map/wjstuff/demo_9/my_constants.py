@@ -1,8 +1,8 @@
 """My constants"""
 
 # sigmoid volume parameters
-SIG_MID = 1.6 # where sigmoid midpoint in meters (play mid volume)
-SIG_STEEP = 5 # how steep the sigmoid is
+SIG_MID = 0# where sigmoid midpoint in meters (play mid volume)
+SIG_STEEP = 3 # how steep the sigmoid is
 
 # Add to my_constants.py if not already there
 DEPTH_MAP_FRAME_SKIP = 5  # Process depth map every N frames
@@ -11,8 +11,8 @@ ARUCO_PERSISTENCE_FRAMES = 5  # Number of frames to keep ArUco markers in memory
 
 
 
-DANGER_METER = 1.4 # when its considered dangerous
-ARRIVAL_METERS = 1.6 # in tracking mode, when u arrive.
+DANGER_METER = 1.1 # when its considered dangerous
+ARRIVAL_METERS = 1.3 # in tracking mode, when u arrive.
 WEBCAM_RESOLUTION = (640, 480)#(1280, 720)
 SAMPLE_RATE = 44100
 DURATION = 1  # Short buffer duration for real-time updates
@@ -44,13 +44,15 @@ ALWAYS_IGNORE = ['poo',
      'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake',  'potted plant',
       'mouse', 'remote', 'keyboard',  'microwave', 'oven',
      'toaster', 'sink', 'refrigerator',  'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush',
-     'book', 'laptop', 'cell phone' # tempo?
+     'book', 'laptop', 'cell phone', # new addition starts next line
+     'toilet', 'laptop', 'backpack', 'tv', 'bottle'
 ]
 
-# ignore unless too close
+ALWAYS_IGNORE = MODEL_NAMES
+
+# ignore unless too close (conditional ignore)
 IGNORE_OBJECTS = [
-'person', 'chair',
-                  'tv' # temp
+'person', 'chair' # temp
                   ]
 
 
