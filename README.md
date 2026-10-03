@@ -77,10 +77,17 @@ The small "phone" window is a mock-up of the phone app: click the square to re-a
 <details>
 <summary><b>Settings</b></summary>
 
-<!-- TODO: fill in. Key ones in my_constants.py: -->
-- `WEBCAM_PATH`: camera index or video file
-- `MIRROR_WEBCAM`: `True` for a laptop webcam facing you, `False` for a camera facing outward
-- `DANGER_METER`, `ALWAYS_IGNORE`, `IGNORE_OBJECTS`
+All settings are in [`my_constants.py`](my_constants.py), grouped by what they control. The ones you'll most likely change:
+
+| Setting | What it does |
+|---|---|
+| `WEBCAM_PATH` | Which camera to use (`0`, `1`, ...) or a video file |
+| `MIRROR_WEBCAM` | `True` for a laptop webcam facing you, `False` for a camera facing outward |
+| `ALWAYS_IGNORE` | Objects that are never announced |
+| `IGNORE_OBJECTS` | Objects only announced when dangerous |
+| `DANGER_METER` | Anything closer than this (meters) triggers the danger warning |
+| `DANGEROUS_OBJECTS` | Objects treated as dangerous at any distance |
+| `ARRIVAL_METERS` | How close you need to get for guiding to finish |
 
 </details>
 
