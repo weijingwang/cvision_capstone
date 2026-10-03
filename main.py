@@ -1,15 +1,15 @@
 # main.py
 import pygame, threading, time, supervision
 # globals are imported in input_handler
-from depth_map import *
-from object_det import *
-from sound_gen import *
-from input_handler import *
+from cvision.depth_map import *
+from cvision.object_det import *
+from cvision.sound_gen import *
+from cvision.input_handler import *
 from my_constants import *  # Make sure DEPTH_MAP_FRAME_SKIP is defined here
-from webcam import *
-from gui import *
-from hrtf import *
-from darren_distance_volume import *
+from cvision.webcam import *
+from cvision.gui import *
+from cvision.hrtf import *
+from cvision.darren_distance_volume import *
 
 pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=2)
 pygame.init()

@@ -1,6 +1,6 @@
 import globals
 from my_constants import *
-from utils import *
+from cvision.utils import *
 
 def input_listener():  # Function to listen for specific key inputs
     """Thread to listen for key inputs and print specific outputs."""

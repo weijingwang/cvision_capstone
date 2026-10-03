@@ -2,7 +2,7 @@ import pygame
 import time
 from my_constants import *
 import globals
-from utils import *
+from cvision.utils import *
 
 
 def quit_app():

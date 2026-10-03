@@ -4,7 +4,7 @@ import numpy as np
 from scipy.signal import square
 from my_constants import *
 import globals
-from hrtf import *
+from cvision.hrtf import *
 import math
 
 def sigmoid_volume(depth, steepness=10, midpoint=1.0):
