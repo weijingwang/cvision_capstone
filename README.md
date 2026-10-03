@@ -8,13 +8,13 @@ This is the fifth demo for our CAPSTONE project **CViSion**. CViSion is an audio
 
 </td>
 <td>
-<img src="logo6.png" alt="Logo" width="400">
+<img src="images/logo6.png" alt="Logo" width="400">
 Fig 1. CViSion Logo
 </td>
 </tr>
 </table>
 
-![Project Diagram](demo4.png)
+![Project Diagram](images/demo4.png)
 
 Fig 2. Demo5 Normal mode (running at 3fps on my Mac CPU only. ~10FPS on GPU computer)
 
