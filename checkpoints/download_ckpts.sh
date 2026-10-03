@@ -1,12 +1,17 @@
 #!/bin/bash
 
+# Downloads the Depth-Anything-V2 metric (Hypersim, Base) checkpoint used by cvision/depth_map.py
+cd "$(dirname "$0")"  # always save into checkpoints/, wherever this is run from
 
-# Define the URLs for the checkpoints
 BASE_URL="https://huggingface.co/depth-anything"
-dv2_metric_base_url="${BASE_URL}/Depth-Anything-V2-Metric-Hypersim-Base/resolve/main/depth_anything_v2_metric_hypersim_vitb.pth"
+CKPT="depth_anything_v2_metric_hypersim_vitb.pth"
+URL="${BASE_URL}/Depth-Anything-V2-Metric-Hypersim-Base/resolve/main/${CKPT}"
 
+echo "Downloading ${CKPT}..."
+if command -v curl >/dev/null 2>&1; then
+    curl -fL -o "$CKPT" "$URL" || { echo "Failed to download checkpoint from $URL"; exit 1; }
+else
+    wget -O "$CKPT" "$URL" || { echo "Failed to download checkpoint from $URL"; exit 1; }
+fi
 
-echo "Downloading sam2_hiera_base_plus.pt checkpoint..."
-wget $dv2_metric_base_url || { echo "Failed to download checkpoint from $dv2_metric_base_url"; exit 1; }
-
-echo "All checkpoints are downloaded successfully."
+echo "Checkpoint downloaded to checkpoints/${CKPT}"
