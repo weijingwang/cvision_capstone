@@ -122,6 +122,9 @@ winter_report/   #
 
 ## Credits
 
+- [Ultralytics YOLOv8](https://github.com/ultralytics/ultralytics) for object detection and segmentation
+- [Depth Anything V2](https://github.com/DepthAnything/Depth-Anything-V2) for metric depth estimation
+- Bill Gardner and Keith Martin, MIT Media Lab, for the [KEMAR HRTF measurements](https://sound.media.mit.edu/resources/KEMAR.html) used for spatial audio
 - khw11044 for the tutorial on Depth Anything with a webcam: https://github.com/khw11044/Depth-Anything-V2-streaming
 - marmik_ch19 for the command line fix for the PyTorch MPS error on Mac: https://www.reddit.com/r/pytorch/comments/1c3kwwg/how_do_i_fix_the_mps_notimplemented_error_for_m1/
 - Warning sound by foosiemac: https://freesound.org/people/foosiemac/sounds/110395/
