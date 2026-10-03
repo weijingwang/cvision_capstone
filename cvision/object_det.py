@@ -11,7 +11,7 @@ from my_constants import *
 import supervision as sv
 
 def init_objectDet():
-    model = YOLO('yolov8x-seg.pt')
+    model = YOLO('checkpoints/yolov8x-seg.pt')
     return model
 
 def init_aruco_detector():
