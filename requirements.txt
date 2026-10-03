@@ -1,8 +1,12 @@
-pygame
-supervision<0.31  # ByteTrack is removed in 0.31
-opencv-python
-torch
-torchvision
-ultralytics
-librosa
-pyfiglet
+# Last tested working: torch 2.14.1, ultralytics 8.4.171, opencv-python 5.0.0.93, supervision 0.30.6 (Oct 2026)
+# Ranges allow bug-fix updates but block major versions that could break things.
+
+# torch's lower bound is low on purpose, so the Windows CUDA 12.1 build (torch 2.5) still counts
+torch>=2.5,<3
+torchvision>=0.20,<1
+ultralytics>=8.4,<9
+opencv-python>=4.7,<6   # 4.7+ needed for the ArUco detector
+supervision>=0.30,<0.31  # ByteTrack is removed in 0.31
+pygame>=2.6,<3
+librosa>=0.11,<1
+pyfiglet>=1.0,<2
