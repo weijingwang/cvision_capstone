@@ -1,6 +1,6 @@
 # CViSion
 
-<!-- TODO: one-paragraph summary. CViSion is an audio guide for the visually impaired that uses object detection, depth maps and spatial (HRTF) audio. -->
+CViSion is a deep learning based Python program designed to assist the visually-impaired in navigating their surroundings. Real-time video from a portable camera is processed to generate directional sound cues to be heard on headphones. These sounds reflect the relative locations and distances of detected objects. Potential dangers such as very close objects are alerted to the user.
 
 <table>
 <tr>
@@ -9,7 +9,7 @@
 </tr>
 </table>
 
-**[Watch the trailer on YouTube](https://www.youtube.com/watch?v=NxqoAR_yYxM)**
+**[Watch the trailer](https://www.youtube.com/watch?v=NxqoAR_yYxM)** · **[UCSB capstone project page](https://capstone.engineering.ucsb.edu/projects/cvision)** · **[Winter design report (PDF)](winter_report/CVision_Shiv_winter_design_packet.pdf)**
 
 ## Installation
 
@@ -31,7 +31,11 @@ git clone https://github.com/DepthAnything/Depth-Anything-V2 DA2
 ./checkpoints/download_ckpts.sh
 ```
 
-**Windows + NVIDIA GPU:** in step 2, use the CUDA command from [pytorch.org](https://pytorch.org/get-started/locally/) instead. On Mac and Linux, the plain command already uses your GPU.
+**Windows + NVIDIA GPU:** in step 2, use this instead (the command we tested, CUDA 12.1):
+```bash
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+```
+If that doesn't match your GPU driver, get the right command from [pytorch.org](https://pytorch.org/get-started/locally/). On Mac and Linux, the plain command already uses your GPU.
 
 The YOLO model (`checkpoints/yolov8x-seg.pt`) downloads automatically on the first run.
 
@@ -44,12 +48,23 @@ Always run it from the project root, because file paths are relative to it.
 
 ### Controls
 
-<!-- TODO: check these are still accurate -->
-- `0`: main state
-- `1`: voice/command mode
-  - type an object ID to be guided to it
-  - type `a<ID>` (e.g. `a7`) to be guided to an ArUco marker
-  - press Enter to list detected objects
+Wear headphones (the audio is spatial). Type commands in the **terminal** and press Enter.
+
+| Type | What it does |
+|---|---|
+| `0` | Main mode (default). Announces new objects; dangerous or very close objects trigger a warning. Typing `0` again re-announces everything. |
+| `1` | Pick a target to be guided to (the program calls this "voice mode"). Then type one of: |
+| &nbsp;&nbsp;↳ *(just Enter)* | List the detected objects and their IDs, then return to main mode |
+| &nbsp;&nbsp;↳ `5` | Guide to object ID 5 (IDs appear in the video window, e.g. `chair (5)`) |
+| &nbsp;&nbsp;↳ `a7` | Guide to ArUco marker 7 |
+| &nbsp;&nbsp;↳ `0` | Cancel |
+| `quit` | Exit (or press `q` in the video window) |
+
+While guiding, a tone plays from the target's direction and gets louder as you get closer. It stops when you're within about 1.3 m, or if the target is lost. Type `0` to cancel.
+
+**Testing ArUco markers:** open any image in [`assets/aruco_markers`](assets/aruco_markers) on your phone or print it, and hold it up to the camera. The file name is the marker ID (`marker_id_7.png` is `a7`).
+
+The small "phone" window is a mock-up of the phone app: click the square to re-announce objects, double-click it to do the same as typing `1`.
 
 ## Features
 
@@ -97,10 +112,6 @@ winter_report/   #
 - **`ByteTrack was deprecated`**: supervision is pinned below 0.31 in `requirements.txt`, so it still works.
 
 </details>
-
-## Team
-
-<!-- TODO -->
 
 ## Credits
 
