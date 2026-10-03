@@ -1,5 +1,5 @@
 pygame
-supervision
+supervision<0.31  # ByteTrack is removed in 0.31
 opencv-python
 torch
 torchvision
