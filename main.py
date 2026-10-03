@@ -9,7 +9,7 @@ from my_constants import *  # Make sure DEPTH_MAP_FRAME_SKIP is defined here
 from cvision.webcam import *
 from cvision.gui import *
 from cvision.hrtf import *
-from cvision.darren_distance_volume import *
+from cvision.volume import *
 
 pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=2)
 pygame.init()
