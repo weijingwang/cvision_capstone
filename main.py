@@ -16,7 +16,7 @@ pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Your phone - FPS: 0")
 clock = pygame.time.Clock()
-warning_sound = pygame.mixer.Sound('warning.ogg')
+warning_sound = pygame.mixer.Sound('assets/warning.ogg')
 warning_sound.set_volume(1)  # Set volume to 10%
 warning_channel = pygame.mixer.Channel(3)  # Use channel 0 for playing this sound
 font = pygame.font.Font(None, 72)  # Default font with size 36
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     tone_thread.start()
     print("Loaded targeting audio threat...")
 
-    MODEL_NAMES_AUDIO = create_audio_dictionary('classnames_audio')
+    MODEL_NAMES_AUDIO = create_audio_dictionary('assets/classnames_audio')
 
     # Initialize webcam
     webcam_data = webcam_init()
