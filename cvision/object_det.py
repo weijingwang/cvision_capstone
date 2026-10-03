@@ -137,7 +137,16 @@ def detect_aruco_markers(frame, raw_depth, aruco_detector, depth_to_plot, cached
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
     # Detect ArUco markers
-    corners, ids, rejected = aruco_detector(gray)
+    # Mirrored markers can't be decoded. If main.py mirrored the frame (MIRROR_WEBCAM),
+    # detect on an un-mirrored copy, then mirror corner x-coords back to match `frame`.
+    if MIRROR_WEBCAM:
+        corners, ids, rejected = aruco_detector(cv2.flip(gray, 1))
+        for c in corners:
+            c[..., 0] = frame.shape[1] - 1 - c[..., 0]
+    else:
+        corners, ids, rejected = aruco_detector(gray)
+    if ids is not None:
+        ids = ids.reshape(-1, 1)  # OpenCV 5 returns flat ids; OpenCV 4 returns (N, 1)
     
     # Process detected markers
     if ids is not None and len(ids) > 0:

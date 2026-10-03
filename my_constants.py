@@ -18,6 +18,7 @@ SAMPLE_RATE = 44100
 DURATION = 1  # Short buffer duration for real-time updates
 MARGIN_WIDTH = 50
 MAX_SINE_VOLUME = 0.3
+MIRROR_WEBCAM = True  # True = selfie-style laptop webcam, False = outward-facing camera (flips left/right)
 WEBCAM_PATH = 0#"person_walk_test_low.mov"#0 #'apple_phone_low.mp4'
 # 'person_walk_test_HD.mp4'
 #COCO dataset. CAPS are what we want but not in dataset
@@ -48,7 +49,7 @@ ALWAYS_IGNORE = ['poo',
      'toilet', 'laptop', 'backpack', 'tv', 'bottle'
 ]
 
-ALWAYS_IGNORE = MODEL_NAMES
+# ALWAYS_IGNORE = MODEL_NAMES  # debug override: this ignored every COCO class, so YOLO showed nothing
 
 # ignore unless too close (conditional ignore)
 IGNORE_OBJECTS = [
