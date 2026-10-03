@@ -1,100 +1,143 @@
-# Fourth Demo Install Tutorial 
+# CViSion
 
-<table>
-<tr>
-<td>
+<!-- TODO: one-paragraph summary. CViSion is an audio guide for the visually impaired that uses object detection, depth maps and spatial (HRTF) audio. -->
 
-This is the fifth demo for our CAPSTONE project **CViSion**. CViSion is an audio guide for the visually impaired that uses AI object detection, depth maps, and other modules to process video input. Based on the detections, spatial audio is generated for the user through headphones.
+<img src="assets/images/logo6.png" alt="CViSion logo" width="300">
 
-</td>
-<td>
-<img src="images/logo6.png" alt="Logo" width="400">
-Fig 1. CViSion Logo
-</td>
-</tr>
-</table>
+![Demo](assets/images/demo4.png)
 
-![Project Diagram](images/demo4.png)
+## Features
 
-Fig 2. Demo5 Normal mode (running at 3fps on my Mac CPU only. ~10FPS on GPU computer)
+<!-- TODO: fill in -->
+- Normal mode: 
+- Guide (tracking) mode: 
+- Danger mode: 
+- ArUco markers: 
 
-- There are two current modes in this demo.
-- There is a normal mode that announces all new objects that appear on the screen with spatial audio.
-- There is also a tracking mode that will play a tone to guide you towards that object until 1 meter away.
-- Finally, there is a WIP pygame GUI that is non-functional in this demo.
-- There is a danger mode that will announce dangerous objects or objects less than 1 meter away. This mode overiddes all the modes automatically for safety.
+## Project structure
 
-**Terminal user input**:
-- enter 0 for main state
-- enter 1 for voice activation mode
-- **inside voice mode enter an object ID to set as target**
-- *This will guide you towards target until you reach it*
+<!-- TODO: fill in -->
+```
+main.py          # entry point
+my_constants.py  # settings (camera, danger distance, ignored classes, ...)
+globals.py       # shared state
+cvision/         # 
+assets/          # 
+checkpoints/     # depth model weights (downloaded, not in git)
+DA2/             # Depth-Anything-V2 (cloned, not in git)
+demos/           # old demos, kept for reference
+```
 
+## Installation
 
+Tested with Python 3.11 and conda.
 
+### 1. Create the environment
 
-## Setup
-
-First get the checkpoint
 ```bash
-cd checkpoints
-
-./download_ckpts.sh
-
-cd ..
+conda create -n cvision python=3.11 -y
+conda activate cvision
 ```
 
-If it doesn't work, manually download here and place it in checkpoints folder:
+### 2. Install PyTorch (pick your machine)
 
-https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-Hypersim-Small/resolve/main/depth_anything_v2_metric_hypersim_vits.pth?download=true
+Install PyTorch **before** `requirements.txt`. Otherwise pip may pull in a build that doesn't match your GPU.
 
-
-<!-- You will need to git clone both Depth-Anything-V2 (https://github.com/DepthAnything/Depth-Anything-V2) and SORT (https://github.com/abewley/sort) -->
-
-In the main directory:
-```
-git clone https://github.com/DepthAnything/Depth-Anything-V2
-```
-<!-- git clone https://github.com/abewley/sort -->
-
-You will also need to **rename the Depth-Anything-V2 folder to DA2**
-
-
-## Virtual Environment
-
-Then setup virtual environment
-
-```bash 
-conda create -n wjdemo python=3.11 -y
-
-conda activate wjdemo
-
-pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+**Mac (Apple Silicon):** the normal build already supports the Mac GPU (MPS).
+```bash
+pip install torch torchvision
 ```
 
-and pip some other stuff...
-
-
-## run
-
+**Linux with an NVIDIA GPU:** the normal build from PyPI already includes CUDA.
+```bash
+pip install torch torchvision
 ```
+
+**Windows with an NVIDIA GPU:** the PyPI build is CPU-only, so use PyTorch's CUDA index.
+Get the exact command for your CUDA version from https://pytorch.org/get-started/locally/. It looks like:
+```bash
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cuXXX
+```
+
+**No GPU:** `pip install torch torchvision` works, but it will be slow.
+
+Check it worked:
+```bash
+python -c "import torch; print(torch.__version__, 'CUDA:', torch.cuda.is_available(), 'MPS:', torch.backends.mps.is_available())"
+```
+The program picks CUDA, then MPS, then CPU automatically.
+
+### 3. Install the other dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Get Depth-Anything-V2
+
+`DA2/` is not in git. From the project root, clone it straight into a folder named `DA2`:
+```bash
+git clone https://github.com/DepthAnything/Depth-Anything-V2 DA2
+```
+
+### 5. Download the depth checkpoint
+
+The program loads `checkpoints/depth_anything_v2_metric_hypersim_vitb.pth` (metric, Base size).
+```bash
+./checkpoints/download_ckpts.sh
+```
+
+The YOLO model (`yolov8x-seg.pt`) downloads automatically on the first run.
+
+## Running
+
+Run from the project root, because asset paths are relative to it:
+```bash
 python main.py
 ```
 
+On a Mac, if PyTorch errors on an unsupported MPS operation:
+```bash
+export PYTORCH_ENABLE_MPS_FALLBACK=1
+```
 
-## Problem
+### Controls
 
-If on M1 mac and have any problems running, do:
-```export PYTORCH_ENABLE_MPS_FALLBACK=1```
+<!-- TODO: check these are still accurate -->
+- `0`: main state
+- `1`: voice/command mode
+  - type an object ID to be guided to it
+  - type `a<ID>` (e.g. `a7`) to be guided to an ArUco marker
+  - press Enter to list detected objects
 
+### Settings
 
-## Credits 
+<!-- TODO: fill in. Key ones in my_constants.py: -->
+- `WEBCAM_PATH`: camera index or video file
+- `MIRROR_WEBCAM`: `True` for a laptop webcam facing you, `False` for a camera facing outward
+- `DANGER_METER`, `ALWAYS_IGNORE`, `IGNORE_OBJECTS`
 
-Thanks to khw11044 for tutorial on depth anything webcam
+### ArUco markers
+
+<!-- TODO: printable markers are in assets/aruco_markers (DICT_4X4_50, IDs 0-49) -->
+
+## Known warnings (safe to ignore)
+
+- `objc: Class SDL... is implemented in both ...` on macOS: pygame and OpenCV each ship their own copy of SDL2.
+- `xFormers not available`: an optional NVIDIA speed-up used by Depth-Anything. It isn't needed.
+- `ByteTrack was deprecated`: supervision is pinned below 0.31 in `requirements.txt`, so it still works.
+
+## Team
+
+<!-- TODO -->
+
+## Credits
+
+Thanks to khw11044 for the tutorial on Depth Anything with a webcam:
 https://github.com/khw11044/Depth-Anything-V2-streaming
 
-And marmik_ch19 for temporary command line fix for pytorch error on mac
+And marmik_ch19 for the temporary command line fix for the PyTorch error on Mac:
 https://www.reddit.com/r/pytorch/comments/1c3kwwg/how_do_i_fix_the_mps_notimplemented_error_for_m1/
 
-Warning sound by foosiemac from
+Warning sound by foosiemac:
 https://freesound.org/people/foosiemac/sounds/110395/
