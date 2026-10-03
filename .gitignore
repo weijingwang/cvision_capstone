@@ -655,3 +655,4 @@ depth_map/wjstuff/demo_9/DA2/
 depth_map/wjstuff/demo_9/Depth-Anything-V2/
 checkpoints/depth_anything_v2_metric_hypersim_vitb.pth.1
 DA2/
+.requirements.txt.un~
