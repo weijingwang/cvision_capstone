@@ -11,6 +11,8 @@ CViSion is a deep learning based Python program designed to assist the visually-
 
 **[Watch the trailer](https://www.youtube.com/watch?v=NxqoAR_yYxM)** · **[UCSB capstone project page](https://capstone.engineering.ucsb.edu/projects/cvision)** · **[Winter design report (PDF)](winter_report/CVision_Shiv_winter_design_packet.pdf)**
 
+This is a cleaned-up presentation version. Full development history, old demos and team branches are in the [original team repo](https://github.com/jordanprescott/shiv_capstone).
+
 ## Installation
 
 Run these from the project root:
