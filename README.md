@@ -2,76 +2,45 @@
 
 <!-- TODO: one-paragraph summary. CViSion is an audio guide for the visually impaired that uses object detection, depth maps and spatial (HRTF) audio. -->
 
-<p align="center">
-  <img src="assets/images/logo6.png" alt="CViSion logo" width="300">
-</p>
+<table>
+<tr>
+<td width="35%"><img src="assets/images/logo6.png" alt="CViSion logo"></td>
+<td width="65%"><img src="assets/images/demo4.png" alt="CViSion demo"></td>
+</tr>
+</table>
 
-### Trailer
-
-[![CViSion trailer](https://img.youtube.com/vi/NxqoAR_yYxM/hqdefault.jpg)](https://www.youtube.com/watch?v=NxqoAR_yYxM)
-
-### Demo
-
-![Demo](assets/images/demo4.png)
-
-## Quick start (Mac)
-
-```bash
-conda create -n cvision python=3.11 -y
-conda activate cvision
-pip install torch torchvision
-pip install -r requirements.txt
-git clone https://github.com/DepthAnything/Depth-Anything-V2 DA2
-./checkpoints/download_ckpts.sh
-python main.py
-```
-
-Not on a Mac? Follow the steps below; only step 2 is different.
+**[Watch the trailer on YouTube](https://www.youtube.com/watch?v=NxqoAR_yYxM)**
 
 ## Installation
 
-### 1. Create the environment
+Run these from the project root:
 
 ```bash
+# 1. Create the environment
 conda create -n cvision python=3.11 -y
 conda activate cvision
-```
 
-### 2. Install PyTorch
+# 2. Install PyTorch first (Windows + NVIDIA: see note below)
+pip install torch torchvision
 
-Install PyTorch **before** `requirements.txt`, so pip doesn't pull in a build that doesn't match your GPU.
-
-| Machine | Command |
-|---|---|
-| Mac, Linux + NVIDIA, or CPU only | `pip install torch torchvision` |
-| Windows + NVIDIA | get the CUDA command from [pytorch.org](https://pytorch.org/get-started/locally/) |
-
-Check it worked (the program uses CUDA, then MPS, then CPU, automatically):
-```bash
-python -c "import torch; print(torch.__version__, 'CUDA:', torch.cuda.is_available(), 'MPS:', torch.backends.mps.is_available())"
-```
-
-### 3. Install the other dependencies
-
-```bash
+# 3. Install the other dependencies
 pip install -r requirements.txt
-```
 
-### 4. Download the models
-
-From the project root:
-```bash
+# 4. Download the models
 git clone https://github.com/DepthAnything/Depth-Anything-V2 DA2
 ./checkpoints/download_ckpts.sh
 ```
-This gets the Depth-Anything-V2 code (into `DA2/`) and its metric depth checkpoint (into `checkpoints/`). The YOLO model (`checkpoints/yolov8x-seg.pt`) downloads automatically on the first run.
+
+**Windows + NVIDIA GPU:** in step 2, use the CUDA command from [pytorch.org](https://pytorch.org/get-started/locally/) instead. On Mac and Linux, the plain command already uses your GPU.
+
+The YOLO model (`checkpoints/yolov8x-seg.pt`) downloads automatically on the first run.
 
 ## Running
 
-Run from the project root, because file paths are relative to it:
 ```bash
 python main.py
 ```
+Always run it from the project root, because file paths are relative to it.
 
 ### Controls
 
@@ -121,6 +90,7 @@ winter_report/   #
 <details>
 <summary><b>Troubleshooting and known warnings</b></summary>
 
+- **Check PyTorch sees your GPU:** `python -c "import torch; print('CUDA:', torch.cuda.is_available(), 'MPS:', torch.backends.mps.is_available())"`. The program uses CUDA, then MPS (Mac), then CPU.
 - **Mac: PyTorch error about an unsupported MPS operation.** Run `export PYTORCH_ENABLE_MPS_FALLBACK=1` before `python main.py`.
 - **`objc: Class SDL... is implemented in both ...`** (macOS): pygame and OpenCV each ship their own copy of SDL2. Safe to ignore.
 - **`xFormers not available`**: an optional NVIDIA speed-up used by Depth-Anything. It isn't needed.
