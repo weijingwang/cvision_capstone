@@ -70,11 +70,10 @@ The small "phone" window is a mock-up of the phone app: click the square to re-a
 
 ## Features
 
-<!-- TODO: fill in -->
-- Normal mode: 
-- Guide (tracking) mode: 
-- Danger mode: 
-- ArUco markers: printable markers are in `assets/aruco_markers` (DICT_4X4_50, IDs 0-49)
+- **Object announcements:** YOLOv8 finds objects, Depth Anything V2 estimates how far away they are, and each new object is announced by name from its direction in 3D audio. Closer objects are louder.
+- **Danger warning:** anything closer than about 1 m, or a dangerous object like a car or bus, triggers a warning sound that overrides everything else.
+- **Guide mode:** pick an object and a tone leads you to it. The tone comes from the target's direction and gets louder as you approach.
+- **ArUco markers:** printed markers (the 50 images in `assets/aruco_markers`, IDs 0-49) can label places YOLO can't recognize, like a door or a room, so you can be guided to them.
 
 <details>
 <summary><b>Settings</b></summary>
@@ -96,17 +95,24 @@ All settings are in [`my_constants.py`](my_constants.py), grouped by what they c
 <details>
 <summary><b>Project structure</b></summary>
 
-<!-- TODO: fill in -->
 ```
-main.py          # entry point
+main.py          # entry point and main loop
 my_constants.py  # settings
-globals.py       # shared state
-cvision/         # 
-assets/          # 
+globals.py       # shared state between threads
+cvision/
+  webcam.py         # camera setup
+  depth_map.py      # Depth Anything V2 depth estimation
+  object_det.py     # YOLO detection, tracking and ArUco markers
+  hrtf.py           # picks the HRTF for an object's direction (3D audio)
+  sound_gen.py      # guide tone and distance-based volume
+  volume.py         # alternative distance-to-volume curve
+  input_handler.py  # terminal commands
+  gui.py            # "phone" mock-up window
+  utils.py          # audio loading and printing helpers
+assets/          # audio (object names, warning sound), HRTF data, ArUco markers, images
 checkpoints/     # model weights (downloaded, not in git)
-DA2/             # Depth-Anything-V2 (cloned, not in git)
-demos/           # old demos, kept for reference
-winter_report/   # 
+DA2/             # Depth Anything V2 code (cloned, not in git)
+winter_report/   # winter quarter design report
 ```
 
 </details>
